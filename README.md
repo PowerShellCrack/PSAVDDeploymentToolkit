@@ -2,7 +2,7 @@
 
 This toolkit originated from the [PSAIBDeploymentToolkit](https://github.com/PowerShellCrack/PSAIBDeploymentToolkit) I am also developing, however I needed to develop a way to manage applications in an "offline" manor. This Toolkit does not use AIB instead it uses scripts that build images using the remote script command in Azure. This can support both Azure IL5 and IL6.
 
-The structure is similar to MDT's and each defined "sequenced" process is within the _Control_ folder and each "sequence" contains an **aib.json** file. This file is not a schema that follows the Azure Image builder schema, however with this file in conjunction with a basic template file (within the _Template_ folder), the _Applications\applications.json_ will **build and capture** a refernce image for AVD consumption.
+The structure is similar to MDT's and each defined "sequenced" process is within the _Control_ folder and each "sequence" contains an **aib.json** file. This file is not a schema that follows the Azure Image builder schema, however with this file in conjunction with a basic template file (within the _Template_ folder), the _Applications\applications.json_ will **build and capture** a reference image for AVD consumption.
 
 ## NOTES 
 I am working to merge this toolkit with my AIB toolkit allowing it to support both methods. 
@@ -15,7 +15,7 @@ I am working to merge this toolkit with my AIB toolkit allowing it to support bo
 
 # The Process
 
-To support multiple envrionment and applications offline, these appplications must be downloaded and staged in blob prior to running the image process. This process is not 100% automated at the moment and does require PowerShell scripts to run each month.
+To support multiple environment and applications offline, these applications must be downloaded and staged in blob prior to running the image process. This process is not 100% automated at the moment and does require PowerShell scripts to run each **month**.
 
 # Toolkit folders structure
 
@@ -47,13 +47,13 @@ AVDDeploymentToolkit
 
 Filename | Explanation | Access Requirements | Run Example | Recommended Cadence| Notes
 --|--|--|--|--|--
-A1_prep_azureenv.ps1|Sets up azure environment to support this toolkit and AIB| must have tenant access and Global Admin|```PS .\A1_prep_azureenv.ps1  -ControlSettings setting.test.json```|Monthly for sastoken renewal.| Sastoken can be generated manually if perferred (paste token in _settings.json_)
-A2_download_applications.ps1|Downloads applications and zips them up| must have internet access|```PS .\A2_download_applications.ps1 -ControlSettings setting.test.json -CompressForUpload```| Monthly |Can be ran on a internet device and files transferred to a tenant connnect device from a media
+A1_prep_azureenv.ps1|Sets up azure environment to support this toolkit and AIB| must have tenant access and Global Admin|```PS .\A1_prep_azureenv.ps1  -ControlSettings setting.test.json```|Monthly for sastoken renewal.| Sastoken can be generated manually if preferred (paste token in _settings.json_)
+A2_download_applications.ps1|Downloads applications and zips them up| must have internet access|```PS .\A2_download_applications.ps1 -ControlSettings setting.test.json -CompressForUpload```| Monthly |Can be ran on a internet device and files transferred to a tenant connect device from a media
 A3_upload_to_azureblob.ps1|Uploads archived applications to blob using sastoken| must have network access to blob storage|```PS .\A3_upload_to_azureblob.ps1  -ControlSettings setting.test.json```| Monthly
 A4_create_avd_ref_vm.ps1|Create Azure VM and runs prep script to install applications| must have tenant access and compute contributor role|```PS .\A4_create_avd_ref_vm.ps1 -ControlSettings setting.gov.json -Sequence Win11AvdGFEImage```| Monthly
 A5_create_vm_image.ps1|Sets up azure environment to support this toolkit and AIB| must have tenant access and compute contributor role|```PS .\A5_create_vm_image.ps1 -ControlSettings setting.test.json -ForceNewSasToken -Sequence Win11AvdGFEImage -VMName TEST-2306-REF -CleanUpVMOnCaptureSuccess```| Monthly |
 
-Each of these scripts have a dependency on at least on json file include in toolkit.
+> Each of these scripts have a dependency on at least on json file included in toolkit.
 
 # How to get started
 1. Download repo
@@ -82,10 +82,10 @@ Supported parameters are:
 - **downloadURI** – url. the official url where files can be downloaded from
 - **downloadUriType** – string. can be either webrequest, shortlink, shortlinkextract, linkId, or linkIdExtract. Used to determine the method of download
 - **preDownloadScript** – string or array of strings. This is sequential. Each line will run in powershell before download starts. Typically used to get versions or release url
-- **postDownloadScript** – string or array of strings. This is sequential. Each line will run in powershell after download is complete. Typically used to cleanup addtional files or extract archive
-- **installArguments** – string. the arguments used to install the appication silently
+- **postDownloadScript** – string or array of strings. This is sequential. Each line will run in powershell after download is complete. Typically used to cleanup additional files or extract archive
+- **installArguments** – string. the arguments used to install the application silently
 - **preInstallScript** – string or array of strings. This is sequential. Each line will run in powershell before install starts. Typically used to setup dependencies. 
-- **postInstallScript** – string or array of strings. This is sequential. Each line will run in powershell after appplication is instaled. Typically used to configure post settings for applications
+- **postInstallScript** – string or array of strings. This is sequential. Each line will run in powershell after application is installed. Typically used to configure post settings for applications
 
 
 ### Example 1
@@ -164,17 +164,17 @@ Supported parameters are:
 - **AzureResources** – Resources need to manage the image build process. Some key ones to focus on
     - **storageAccount** – used during the application upload and download steps. Specify the storage account used
     - **storageContainer** – used during the application upload and download steps. Specify the container used
-    - **containerSasToken** – used during the application upload and download steps. Can be autogenreated using script _A1_prep_azureenv.ps1_. Can use stored in keyvault
+    - **containerSasToken** – used during the application upload and download steps. Can be autogenerated using script _A1_prep_azureenv.ps1_. Can use stored in keyvault
     - **keyVault** – Specify the keyvault to use or create
     > **Note** Some value can use \[Keyvault\]; this will securely store the values in keyvault during the process and use it throughout the process
 - **AvdResources** – NOT USED YET
-- **ManagedIdenity** – specified to appropiate assign roles to AIB
-- **LogAnalytics** – Not used at the moment. Intended for sending build status to log analytcis for viewing
+- **ManagedIdentity** – specified to appropiate assign roles to AIB
+- **LogAnalytics** – Not used at the moment. Intended for sending build status to log analytics for viewing
 
 # **aib.json** breakdown
 
 - **customSettings** – section is where the global settings will be.
-- **customSequence** – section is used to specify each step the script will run through. Once the customSequence is complete the cleanupAction, finalaction (from customSettings section) are ran
+- **customSequence** – section is used to specify each step the script will run through. Once the customSequence is complete the cleanup action and final action (from customSettings section) are ran
 - **Template** – section is used for AIB process
 - **imageDefinition** – section is used to build the reference image and provide the name of the image image in the gallery
 
@@ -186,12 +186,12 @@ Supported parameters are:
 - **enabled** – boolean. enables or disables the step in the csutomizations
 - **type** – string. Set to "Application"
 - **name** – string. Name of step
-- **id** – guid. Must match that of the application.json corrisponding list,
+- **id** – guid. Must match that of the application.json corresponding list,
 - **workingDirectory** – string. Path of where application will installed from
 - **validExitCodes** – array of integers. typically set to [0,3010]
 - **continueOnError** – boolean. enables allows script to run even if do does not match the validExitCode
 - **validateInstalled** – boolean. enables validates the application is installed using the application name
-- **rebootOnSuccess** – boolean. Reboots the system after install. this will break the script from continuing. DONT USE YET
+- **rebootOnSuccess** – boolean. Reboots the system after install. this will break the script from continuing. DON'T USE YET
 
 ### Example 1
 ```json
@@ -214,14 +214,14 @@ Supported parameters are:
 ## Type: **Scripts**
 
 Supported parameters are:
-- **enabled** – boolean. enables or disables the step in the csutomizations
+- **enabled** – boolean. enables or disables the step in the customizations
 - **type** – string. Set to "Script"
 - **name** – string. Name of step
 - **id** – guid. can be anything. Not used
-- **inlineScript** – string or array of strings. This is sequenctial. Each line will run in powershell
+- **inlineScript** – string or array of strings. This is sequential. Each line will run in powershell
 - **validExitCodes** – array of integers. typically set to [0,3010]
 - **continueOnError** – boolean. enables allows script to run even if do does not match the validExitCode
-- **rebootOnSuccess** – boolean. Reboots the system after script is ran. this will break the script from continuing. DONT USE YET
+- **rebootOnSuccess** – boolean. Reboots the system after script is ran. this will break the script from continuing. DON'T USE YET
 
 ### Example 1
 
@@ -257,7 +257,7 @@ Supported parameters are:
 ## Type: **WindowsUpdate**
 
 Supported parameters are:
-- **enabled** – boolean. enables or disables the step in the csutomizations
+- **enabled** – boolean. enables or disables the step in the customizations
 - **type** – string. Set to "WindowsUpdate"
 - **name** – string. Name of step
 - **id** – guid. can be anything. Not used
@@ -265,7 +265,7 @@ Supported parameters are:
 - **postUpdateScript** – string or array of strings. This is sequential. Each line will run in powershell after updates are installed
 - **restartTimeout** – integer. typically set to 0
 - **continueOnError** – boolean. enables allows script to run even if do does not match the validExitCode
-- **rebootOnSuccess** – boolean. Reboots the system after script is ran. this will break the script from continuing. DONT USE YET
+- **rebootOnSuccess** – boolean. Reboots the system after script is ran. this will break the script from continuing. DON'T USE YET
 
 ### Example 1
 
@@ -297,7 +297,7 @@ Since the json has _key:value_ properties in it such as: ```"filename":"setup.ex
 
 ## Security concerns
 
-- Storage accoutn has public access but to certain virtual networks
+- Storage account has public access but to certain virtual networks
 - Container must be anonymous access with SASTokens
 
 ## TODOs
@@ -317,6 +317,11 @@ If you are contributing, testing or using the code. Please create a copy of the 
 ## Output
 
 There is a _Logs_ folder that will contain a dated transcript of the AIB sequence called and the json arm template is generated there for reference.
+
+# Known Issues
+
+- Uploading large files (like M365, Visio, Project, etc) to blob may timeout. I developed a 7zip wrapper script to break the compress file into parts. Everything will upload just fine, but the download doesn't work with split files yet. Don't enable m365 apps yet; use m365 azure marketplace image 
+- 
 
 # References
 
