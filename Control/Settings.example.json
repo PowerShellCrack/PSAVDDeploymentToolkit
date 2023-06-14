@@ -1,0 +1,78 @@
+{
+    "Settings":  {
+                "appListFilePath": ".\\Applications\\applications.json",
+                "appDownloadedFilePath": ".\\Applications\\applications_downloaded.xml",
+                "appUploadedFilePath": ".\\Applications\\applications_uploaded.xml",
+                "sequenceRunnerScriptFile": ".\\Scripts\\VM_Scripts\\vm_run_sequence.ps1",
+                "folderUploadedFilePath": ".\\Control\\toolkitfolders_uploaded.xml",
+                "supportingModules": [
+                    "MSFTLinkDownloader",
+                    "YetAnotherCMLogger"
+                ],
+                "offlineSupportingModules": [
+                    "MSFTLinkDownloader",
+                    "YetAnotherCMLogger",
+                    "PSWindowsUpdate",
+                    "LGPO"
+                ],
+                "recordToLaw": "false"
+    },
+
+    "TenantEnvironment":  {
+                "tenantTd":  "<GUID>",
+                "domain":  "<Domain",
+                "azureEnvironment":  "AzureUSPublic",
+                "location":  "<location>",
+                "subscriptionName":  "<subscription>"
+    },
+
+    "AzureResources":  {
+                "imageResourceGroup": "<resourcegroup>",
+                "imageComputeGallery":  "<resourcegroup>",
+                "storageResourceGroup":  "<resourcegroup>",
+                "storageAccount": "<storage account>",
+                "storageContainer": "<container>",
+                "containerSasToken": "<saskey>|[KeyVault]",
+                "keyVaultResourceGroup":  "<use resourcegroup>",
+                "keyVault": "<keyVaultname>",
+                "computeResourceGroup":  "<resourcegroup>",
+                "refVmPrefix": "<vmprefix>",
+                "refVmAdmin": "<adminaccount>",
+                "refVmAdminPassword": "<password>|[KeyVault]",
+                "refVmVNetName": "<vnet>",
+                "refVmSubnet": "<subnet>"
+    },
+
+    "AvdResources":{
+                "ResourceGroup": "<resourcegroup>",
+                "HostPool": "<hostpool>",
+                "HostPoolRegistrationKey": "[KeyVault]",
+                "HostCount": 2,
+                "HostPrefix": "DTOAVD-[ImageVersion]",
+                "HostJoinType": "AzureAD",
+                "HostDomainAD": "",
+                "HostDomainJoinAdmin": "",
+                "HostDomainJoinAdmminPassword": "[KeyVault]",
+                "HostDomainJoinOU": "",
+                "HostIntuneEnrolled": true,
+                "HostNetworkResourceGroup": "<resourcegroup>",
+                "HostNetworkVnet": "<vnet>",
+                "HostNetworkSubnet": "<subnet",
+                "HostPostCustomizationURL": "",
+                "HostLocalAdmin": "xAdmin",
+                "HostLocalPassword": "[KeyVault]"
+    },
+
+    "ManagedIdentity":  {
+                "identityName":  "<mid-guid>",
+                "roleDefinitionTemplate":  "aibRoleImageCreation.json"
+    },
+
+    "LogAnalytics": {
+                "name": "<lawname>",
+                "resourceGroup": "<resourcegroup>",        
+                "workspaceId":   "<GUID>|[KeyVault]",
+                "WorkspaceKey": "<WorkspaceKey>|[KeyVault]"
+
+    }
+}

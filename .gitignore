@@ -1,0 +1,16 @@
+!/Logs/
+/Logs/*
+!/Applications/
+/Applications/*/*
+!/Exports/
+/Exports/*
+tests.ps1
+tests.json
+test.ps1
+*ritracyi*
+deploymentfolders_uploaded.xml
+toolkitfolders_uploaded.xml
+applications_uploaded.xml
+applications_downloaded.xml
+thumbs.db
+*.zip*
