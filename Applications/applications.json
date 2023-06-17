@@ -12,7 +12,8 @@
         "postInstallScript": [
             "Copy-Item [sourcePath] -Destination [destPath] -Force | Out-Null"
         ],
-        "detectionRule": "file"
+        "detectionType": "file",
+        "iconPath":""
     },
 
     {
@@ -26,8 +27,7 @@
         "downloadURI" : "https://dl.dod.cyber.mil/wp-content/uploads/pki-pke/msi/InstallRoot_5.5x64.msi",
         "downloadUriType" : "webrequest",
         "installArguments": "/quiet /norestart /l*v \"[localPath]\\[fileName]_install.log\"",
-        "detectionRule": "msi"
-
+        "detectionType": "msi"
     },
 
     {
@@ -65,7 +65,8 @@
             "$version = (Get-ChildItem -Path \"[localPath]\" -Recurse -Directory | Where BaseName -match \"\\d+(\\.\\d+){1,3}\").BaseName",
             "Pop-Location"
         ],
-        "installArguments": "\"[outputPath]\" /configure \"[localPath]\\configuration.xml\""
+        "installArguments": "\"[outputPath]\" /configure \"[localPath]\\configuration.xml\"",
+        "detectionType": "appwiz"
     },
 
     {
@@ -101,7 +102,8 @@
             "$version = (Get-ChildItem -Path \"[localPath]\" -Recurse -Directory | Where BaseName -match \"\\d+(\\.\\d+){1,3}\").BaseName",
             "Pop-Location"
         ],
-        "installArguments": "\"[outputPath]\" /configure \"[localPath]\\configuration.xml\""
+        "installArguments": "\"[outputPath]\" /configure \"[localPath]\\configuration.xml\"",
+        "detectionType": "appwiz"
     },
 
     {
