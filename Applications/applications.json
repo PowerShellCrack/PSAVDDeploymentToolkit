@@ -11,7 +11,8 @@
         "downloadUriType" : "webrequest",
         "postInstallScript": [
             "Copy-Item [sourcePath] -Destination [destPath] -Force | Out-Null"
-        ]
+        ],
+        "detectionRule": "file"
     },
 
     {
@@ -24,7 +25,9 @@
         "fileName": "InstallRoot_5.5x64.msi",
         "downloadURI" : "https://dl.dod.cyber.mil/wp-content/uploads/pki-pke/msi/InstallRoot_5.5x64.msi",
         "downloadUriType" : "webrequest",
-        "installArguments": "/quiet /norestart /l*v \"[localPath]\\[fileName]_install.log\""
+        "installArguments": "/quiet /norestart /l*v \"[localPath]\\[fileName]_install.log\"",
+        "detectionRule": "msi"
+
     },
 
     {

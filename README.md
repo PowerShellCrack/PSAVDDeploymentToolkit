@@ -67,6 +67,18 @@ A5_create_vm_image.ps1|Sets up azure environment to support this toolkit and AIB
 1. Run each A scripts in order using the params (like in the examples)
 
 
+## the workflow
+
+![step1](/.images/a1_prep_azureenv.jpg)
+
+![step2](/.images/a2_download_applications.jpg)
+
+![step3](/.images/a3_upload_to_azureblob.jpg)
+
+![step4](/.images/a4_create_avd_ref.jpg)
+
+![step5](/.images/a5_create_vm_image.jpg)
+
 # **application.json** breakdown
 
 This is an array of listed applications and the method for downloading them
