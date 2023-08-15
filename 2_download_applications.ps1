@@ -26,10 +26,16 @@
     Specify a path other than the relative path this script is running in
 
     .PARAMETER ControlSettings
-    Specify a confoguration file. Defaults to settings.json
+    Specify a configuration file. Defaults to settings.json
 
+    .PARAMETER ApplicationsOverrideFile
+    Specify an Application fiel to override the path in settings file
+    
     .PARAMETER CompressForUpload
     Compresses dwonload applications to zip
+
+    .PARAMETER RemoveOlderVersions
+    Removes older versions of applications
 
     .INPUTS
     applications.json <-- List of applications to download
@@ -57,7 +63,7 @@
 Param(
     [Parameter(Mandatory = $false)]
     [string]$ResourcePath,
-    
+
     [Parameter(Mandatory = $false)]
     [ArgumentCompleter( {
         param ( $commandName,
@@ -67,7 +73,7 @@ Param(
                 $fakeBoundParameters )
 
 
-        $ToolkitSettings = Get-Childitem "$PSScriptRoot\Control" -Filter Settings* | Where Extension -eq '.json' | Select -ExpandProperty Name
+        $ToolkitSettings = Get-Childitem "$PSScriptRoot\Control" -Filter Settings* | Where-Object Extension -eq '.json' | Select-Object -ExpandProperty Name
 
         $ToolkitSettings | Where-Object {
             $_ -like "$wordToComplete*"
@@ -77,7 +83,30 @@ Param(
     [Alias("Config","Setting")]
     [string]$ControlSettings = "Settings.json",
 
-    [switch]$CompressForUpload
+    [Parameter(Mandatory = $false)]
+    [ArgumentCompleter( {
+        param ( $commandName,
+                $parameterName,
+                $wordToComplete,
+                $commandAst,
+                $fakeBoundParameters )
+
+
+        $ApplicationsLists = Get-Childitem "$PSScriptRoot\Applications" -Filter applications* | Where-Object Extension -eq '.json' | Select-Object -ExpandProperty Name
+
+        $ApplicationsLists | Where-Object {
+            $_ -like "$wordToComplete*"
+        }
+
+    } )]
+    [Alias("AppList")]
+    [string]$ApplicationsOverrideFile = "applications.json",
+
+    [switch]$CompressForUpload,
+
+    [switch]$RemoveOlderVersions,
+
+    [switch]$Force
 )
 #=======================================================
 # VARIABLES
@@ -115,12 +144,13 @@ Start-transcript "$ResourcePath\Logs\$LogfileName" -ErrorAction Stop
 ## GET SETTINGS
 ## ================================
 $ToolkitSettings = Get-Content "$ControlPath\$ControlSettings" -Raw | ConvertFrom-Json
-$ApplicationsList = (Get-Content "$ResourcePath\$($ToolkitSettings.Settings.appListFilePath)" | ConvertFrom-Json) | Where enabled -eq $true
-
-#import exported apps list from last run (this allows to check if downloaded recent)
-If(Test-Path "$ResourcePath\$($ToolkitSettings.Settings.appDownloadedFilePath)" ){
-    $AppDownloadedTimeStamp = Import-Clixml (Resolve-Path "$ResourcePath\$($ToolkitSettings.Settings.appDownloadedFilePath)")
+If($PSBoundParameters.ContainsKey('ApplicationsOverrideFile')){
+    $ApplicationsList = Get-Content "$ApplicationsPath\$ApplicationsOverrideFile" -Raw | ConvertFrom-Json | Where-Object enabled -eq $true
+}Else{
+    $ApplicationsList = (Get-Content "$ResourcePath\$($ToolkitSettings.Settings.appListFilePath)"  -Raw | ConvertFrom-Json) | Where-Object enabled -eq $true
 }
+
+
 ## ================================
 ## IMPORT FUNCTIONS
 ## ================================
@@ -128,6 +158,7 @@ If(Test-Path "$ResourcePath\$($ToolkitSettings.Settings.appDownloadedFilePath)" 
 . "$ScriptsPath\Environment.ps1"
 . "$ScriptsPath\SoftwareInventory.ps1"
 . "$ScriptsPath\WindowsUpdate.ps1"
+
 
 ##*=============================================
 ##* INSTALL MODULES
@@ -148,7 +179,7 @@ Write-Host "Trusted" -ForegroundColor Green
 $i=1
 Foreach($Module in $ToolkitSettings.Settings.supportingModules){
     $i++
-    Write-Host ("    |---[{0} of {1}]: Installing module {2}..." -f $i,($ToolkitSettings.Settings.supportingModules.count+1),$Module) -NoNewline
+    Write-Host ("    |---[{0} of {1}]: Installing module {2}..." -f $i,($ToolkitSettings.Settings.supportingModules.count+1),$Module) -NoNewline:$NoNewLine
     if ( Get-Module -FullyQualifiedName $Module -ListAvailable ) {
         Write-Host ("already installed") -ForegroundColor Green
     }
@@ -166,9 +197,19 @@ Foreach($Module in $ToolkitSettings.Settings.supportingModules){
     } 
 }
 
+#Test if 7zip files exist
+$sevenzipfiles = @(
+    "$ToolsPath\7za.exe" #standalone console version of 7-Zip with reduced formats support.
+    "$ToolsPath\7za.dll" #library for working with 7z archives
+    "$ToolsPath\7zxa.exe" #library for extracting from 7z archives
+    "$ToolsPath\7zxa.dll" #library for extracting from 7z archives
+)
+
+
 ## ================================
 ## MAIN
 ## ================================
+
 
 Write-Host ("`nSTARTING DOWNLOAD PROCESS") -ForegroundColor Cyan
 $mainstopwatch = [System.Diagnostics.Stopwatch]::StartNew()
@@ -182,101 +223,114 @@ Foreach($Application in $ApplicationsList){
     
     #-and ($LastApplicationRun | Where {$_.productName -eq $Application.productName -and $_.DateDownloaded -ne (get-Date -Format yyyyMMdd)})
     
-        #reset version for each iteration (some predownload scripts will set this variable)
-        $version = $null
-        #expand the [variables] into values
-        $Localpath = Expand-StringVariables -Object $Application -Property $Application.localpath -IncludeVariables
-        New-Item -Path $Localpath -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+    #reset version for each iteration (some predownload scripts will set this variable)
+    $version = $null
+    #expand the [variables] into values
+    $Localpath = Expand-StringVariables -Object $Application -Property $Application.localpath -IncludeVariables
+    New-Item -Path $Localpath -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
+    
+    If([System.Convert]::ToBoolean($Application.download) )
+    {
+        #run the pre process section
+        If($Application.psobject.properties | Where-Object Name -eq 'preDownloadScript' ){
+            Write-Host ("    |---Running pre download script...") -NoNewline:$NoNewLine
+            Foreach($scriptline in $Application.preDownloadScript){
+                $expandedscript = Expand-StringVariables -Object $Application -Property $scriptline
+                Write-Verbose "RUNNING: Invoke-Expression `"$expandedscript`""
+                Invoke-Expression $expandedscript
+            }
+            Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
+        }
+    }
         
+    $f = 0
+    #TEST $fileName = $Application.fileName | Select -first 1
+    Foreach($fileName in $Application.fileName)
+    {
+        
+        $f++
+        $appObject = New-Object pscustomobject
+        #record the app
+        $appObject | Add-Member -MemberType NoteProperty -Name ProductName -Value $Application.productName
+        $appObject | Add-Member -MemberType NoteProperty -Name Id -Value $Application.appId
+
+        #some names may have paths (becuase thats the install path); need to grabe the name for use is certain calls
+        $fileName = Expand-StringVariables -Object $Application -Property $fileName -IncludeVariables
+        $file = $fileName.split('\')[-1]
+        $Extension = [System.IO.Path]::GetExtension($fileName)
+        
+        $outputPath = Join-Path $LocalPath -ChildPath $fileName
+        #record location
+        $appObject | Add-Member -MemberType NoteProperty -Name AppLocation -Value $LocalPath
+
+        Write-Host ("    |---Downloading [{0}]..." -f $fileName) -NoNewline:$NoNewLine
+        #check to see if application should download
         If([System.Convert]::ToBoolean($Application.download) )
         {
-            #run the pre process section
-            If($Application.psobject.properties | Where Name -eq 'preDownloadScript' ){
-                Write-Host ("    |---Running pre download script...") -NoNewline:$NoNewLine
-                Foreach($scriptline in $Application.preDownloadScript){
-                    $expandedscript = Expand-StringVariables -Object $Application -Property $scriptline
+            #Update the uri with any variables
+            $downloadURI = Expand-StringVariables -Object $Application -Property $Application.downloadURI -IncludeVariables
+            #allow for downloading of files from internet
+            $env:SEE_MASK_NOZONECHECKS = 1
+            Try{
+                switch($Application.downloadUriType){
+                    'webrequest' {
+                        Write-Verbose "RUNNING: Invoke-WebRequest -Uri `"$downloadURI`" -OutFile `"$outputPath`" -UseBasicParsing"
+                        $null = Invoke-WebRequest -Uri $downloadURI -OutFile $outputPath -UseBasicParsing
+                    }
+    
+                    'shortlink' {
+                        Write-Verbose "RUNNING: Get-MsftLink -ShortLink `"$downloadURI`" | Invoke-MsftLinkDownload -DestPath `"$localpath`""
+                        $null = Get-MsftLink -ShortLink $downloadURI | Invoke-MsftLinkDownload -DestPath $localpath
+                    }
+
+                    'shortlinkextract' {
+                        Write-Verbose "RUNNING: Get-MsftLink -ShortLink `"$downloadURI`" | Invoke-MsftLinkDownload -DestPath `"$localpath`" -Extract -Cleanup"
+                        $null = Get-MsftLink -ShortLink $downloadURI | Invoke-MsftLinkDownload -DestPath $localpath -Extract -Cleanup
+                    }
+    
+                    'linkId' {
+                        $LinkID = [regex]::Matches($downloadURI, '\d+$').Value
+                        Write-Verbose "RUNNING: Invoke-MsftLinkDownload -LinkID $LinkID -Filter $file -DestPath `"$localpath`" -NoProgress -Force"
+                        $null = Invoke-MsftLinkDownload -LinkID $LinkID -Filter $file -DestPath $Localpath -NoProgress -Force
+                    }
+    
+                    'linkIdExtract' {
+                        $LinkID = [regex]::Matches($downloadURI, '\d+$').Value
+                        Write-Verbose "RUNNING: Invoke-MsftLinkDownload -LinkID $LinkID -DestPath $Localpath -Extract -Cleanup"
+                        
+                        $null = Invoke-MsftLinkDownload -LinkID $LinkID -DestPath $Localpath -Extract -Cleanup
+                    }
+                }
+                $Downloaded = $true
+                #record date downloaded
+                $appObject | Add-Member -MemberType NoteProperty -Name DateDownloaded -Value (get-Date -Format yyyyMMdd)
+                Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
+
+                
+            }Catch{
+                $Downloaded = $false
+                Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red  
+            }
+
+            #remove metadata
+            Unblock-File -Path ($Localpath + '\' + $fileName) -ErrorAction SilentlyContinue
+
+            #remove variable
+            Remove-Variable -Name 'SEE_MASK_NOZONECHECKS' -ErrorAction SilentlyContinue
+            
+            #run the post process section
+            If($Application.psobject.properties | Where-Object Name -eq 'postDownloadScript' ){
+                Write-Host ("    |---Running post download script...") -NoNewline:$NoNewLine
+                Foreach($scriptline in $Application.postDownloadScript){
+                    $expandedscript = Expand-StringVariables -Object $Application -Property $scriptline -IncludeVariables
                     Write-Verbose "RUNNING: Invoke-Expression `"$expandedscript`""
                     Invoke-Expression $expandedscript
                 }
                 Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
             }
-        }
-        #TEST $fileName = $Application.fileName | Select -first 1
-        $f = 0
-        
-        Foreach($fileName in $Application.fileName)
-        {
-            
-            $f++
-            $appObject = New-Object pscustomobject
-            #record the app
-            $appObject | Add-Member -MemberType NoteProperty -Name ProductName -Value $Application.productName
-            $appObject | Add-Member -MemberType NoteProperty -Name Id -Value $Application.appId
 
-            #some names may have paths (becuase thats the install path); need to grabe the name for use is certain calls
-            $fileName = Expand-StringVariables -Object $Application -Property $fileName -IncludeVariables
-            $file = $fileName.split('\')[-1]
-            $outputPath = Join-Path $LocalPath -ChildPath $fileName
-            #record location
-            $appObject | Add-Member -MemberType NoteProperty -Name AppLocation -Value $LocalPath
-
-            Write-Host ("    |---Downloading [{0}]..." -f $fileName) -NoNewline:$NoNewLine
-            #check to see if application should download
-            If([System.Convert]::ToBoolean($Application.download) )
-            {
-                #Update the uri with any variables
-                $downloadURI = Expand-StringVariables -Object $Application -Property $Application.downloadURI -IncludeVariables
-                Try{
-                    switch($Application.downloadUriType){
-                        'webrequest' {
-                            Write-Verbose "RUNNING: Invoke-WebRequest -Uri `"$downloadURI`" -OutFile `"$outputPath`" -UseBasicParsing"
-                            $null = Invoke-WebRequest -Uri $downloadURI -OutFile $outputPath -UseBasicParsing
-                        }
-        
-                        'shortlink' {
-                            Write-Verbose "RUNNING: Get-MsftLink -ShortLink `"$downloadURI`" | Invoke-MsftLinkDownload -DestPath `"$localpath`""
-                            $null = Get-MsftLink -ShortLink $downloadURI | Invoke-MsftLinkDownload -DestPath $localpath
-                        }
-
-                        'shortlinkextract' {
-                            Write-Verbose "RUNNING: Get-MsftLink -ShortLink `"$downloadURI`" | Invoke-MsftLinkDownload -DestPath `"$localpath`" -Extract -Cleanup"
-                            $null = Get-MsftLink -ShortLink $downloadURI | Invoke-MsftLinkDownload -DestPath $localpath -Extract -Cleanup
-                        }
-        
-                        'linkId' {
-                            $LinkID = [regex]::Matches($downloadURI, '\d+$').Value
-                            Write-Verbose "RUNNING: Invoke-MsftLinkDownload -LinkID $LinkID -Filter $file -DestPath `"$localpath`" -NoProgress -Force"
-                            $null = Invoke-MsftLinkDownload -LinkID $LinkID -Filter $file -DestPath $Localpath -NoProgress -Force
-                        }
-        
-                        'linkIdExtract' {
-                            $LinkID = [regex]::Matches($downloadURI, '\d+$').Value
-                            Write-Verbose "RUNNING: Invoke-MsftLinkDownload -LinkID $LinkID -DestPath $Localpath -Extract -Cleanup"
-                            $null = Invoke-MsftLinkDownload -LinkID $LinkID -DestPath $Localpath -Extract -Cleanup
-                        }
-                    }
-                    $Downloaded = $true
-                    #record date downloaded
-                    $appObject | Add-Member -MemberType NoteProperty -Name DateDownloaded -Value (get-Date -Format yyyyMMdd)
-                    Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
-                }Catch{
-                    $Downloaded = $false
-                    Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red  
-                }
-                
-                #run the post process section
-                If($Application.psobject.properties | Where Name -eq 'postDownloadScript' ){
-                    Write-Host ("    |---Running post download script...") -NoNewline:$NoNewLine
-                    Foreach($scriptline in $Application.postDownloadScript){
-                        $expandedscript = Expand-StringVariables -Object $Application -Property $scriptline -IncludeVariables
-                        Write-Verbose "RUNNING: Invoke-Expression `"$expandedscript`""
-                        Invoke-Expression $expandedscript
-                    }
-                    Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
-                }
-
-                #record action
-                $appObject | Add-Member -MemberType NoteProperty -Name Downloaded -Value $Downloaded
+            #record action
+            $appObject | Add-Member -MemberType NoteProperty -Name Downloaded -Value $Downloaded
 
         }Else{
             #record action
@@ -288,26 +342,40 @@ Foreach($Application in $ApplicationsList){
             }
         }
 
+        If($RemoveOlderVersions -or ($Application.version -eq 'latest')){
+            Write-Host ("    |---Removing older versions...") -NoNewline:$NoNewLine
+            $OlderVersions = Get-ChildItem -Path $LocalPath -File -Filter "*$Extension" | Where-Object {$_.Name -ne $fileName}
+            If($OlderVersions){
+                $OlderVersions | Remove-Item -Force -ErrorAction SilentlyContinue | Out-Null
+                Write-Verbose ("Removing file(s): {0}" -f ($OlderVersions.name -join ','))
+                Write-Host ("{0} Removed {1} files" -f (Get-Symbol -Symbol GreenCheckmark),$OlderVersions.count) -ForegroundColor Yellow
+            }Else{
+                Write-Host ("{0} Removed {1} files" -f (Get-Symbol -Symbol GreenCheckmark),'0') -ForegroundColor Green
+            }
+        }
+
         If(Test-Path ($Localpath + '\' + $fileName) -ErrorAction SilentlyContinue){
-            Write-Host ("    |---Updating application version info...") -NoNewline
+            
+            Write-Host ("    |---Updating application version info...") -NoNewline:$NoNewLine
             If($version){
                 $Application.version = $version
             }ElseIf($ApplicationVersion = Get-VersionInfo ($Localpath + '\' + $fileName)){
-                $Application.version = ($ApplicationVersion).Trim()
+                $Application.version = $ApplicationVersion
             }Else{
                 $Application.version = (Expand-StringVariables -Object $Application -Property $Application.version -IncludeVariables).Trim()
             }
             #record value
             $appObject | Add-Member -MemberType NoteProperty -Name Version -Value $Application.version
-            Write-Host ('{0}' -f $Application.version) -ForegroundColor Green
+            Write-Host ('{0}' -f $appObject.version) -ForegroundColor Green
 
-            If($CompressForUpload){
-                #get file info
-                $Extension = [System.IO.Path]::GetExtension($fileName)  
-                $ZippedName = ('application_' + ($Application.productName -replace '\s+|\W') + '_' + ($fileName).replace($Extension,'') + '_' + $Application.version + '.zip')
+            If($CompressForUpload)
+            {
                 Write-Host "    |---Zipping up application files..." -NoNewline:$NoNewLine
 
-                
+                $ZippedNames = @()
+                #create zip file name     
+                $ZippedName = ('application_' + ($Application.productName -replace '\s+|\W') + '_' + ($fileName).replace($Extension,'') + '_' + $Application.version + '.zip')
+                Write-Verbose ("Compressing application [{0}] as zip: {1}" -f $Application.productName, $ZippedName)
                 Try{
                     #to save some time, check if zipped file exists
                     If( -NOT(Test-Path "$ApplicationsPath\$ZippedName*") ){
@@ -339,16 +407,17 @@ Foreach($Application in $ApplicationsList){
                                 Compress-Archive -LiteralPath ($Localpath + '\' + $fileName) -DestinationPath ($ApplicationsPath + '\' + $ZippedName) -Force | Out-Null
                             }
                         }
+                        #zip up directory if more than one file is found
+                        $ZippedNames += Get-ChildItem $ApplicationsPath -Filter "$ZippedName*" | Select-Object -ExpandProperty Name
+                        Write-Host ("{0} Total zipped files {1}" -f (Get-Symbol -Symbol GreenCheckmark),$ZippedNames.count) -ForegroundColor Green
+
                     }Else{
+                        $ZippedNames += Get-ChildItem $ApplicationsPath -Filter "$ZippedName*" | Select-Object -ExpandProperty Name
                         Write-Host ("{0} File exists already!" -f (Get-Symbol -Symbol GreenCheckmark)) -ForegroundColor Green
                     }
                     #record value. Sometimes file may be split into parts; get all parts
-                    $ZippedNames = @()
-                    $ZippedNames += Get-ChildItem $ApplicationsPath -Filter $ZippedName.replace('.zip','*') | Select -ExpandProperty Name
                     $appObject | Add-Member -MemberType NoteProperty -Name ArchiveFile -Value $ZippedNames
                     #$appObject | Add-Member -MemberType NoteProperty -Name ArchiveFiles -Value $ZippedNames
-
-                    #zip up directory if more than one file is found
                     $Archived = $true
                 }Catch{
                     $Archived = $false
@@ -359,9 +428,24 @@ Foreach($Application in $ApplicationsList){
                 #record action
                 $appObject | Add-Member -MemberType NoteProperty -Name ExportedPath -Value $ApplicationsPath
                 $appObject | Add-Member -MemberType NoteProperty -Name Archived -Value $Archived
-                
+  
                 #check to see if zip file(s) exist
-                If( Test-Path ($ApplicationsPath + '\' + $ZippedName + '*') ){
+                #If( Test-Path ($ApplicationsPath + '\' + $ZippedName.replace('.zip','*')) ){
+                If( Test-Path "$ApplicationsPath\$ZippedName*" )
+                {
+                    If($RemoveOlderVersions){
+                        #remove older versions
+                        Write-Host ("    |---Removing older zip versions...") -NoNewline:$NoNewLine
+                        $OlderVersions = Get-ChildItem -Path $ApplicationsPath -File -Filter ('application_' + ($Application.productName -replace '\s+|\W') + '_' + ($fileName).replace($Extension,'') + '*') | Where-Object { $_.Name -notin $ZippedNames }
+                        If($OlderVersions){
+                            $OlderVersions | Remove-Item -Force -ErrorAction SilentlyContinue | Out-Null
+                            Write-Verbose ("Removing file(s): {0}" -f ($OlderVersions.name -join ','))
+                            Write-Host ("{0} Removed {1} zipped files" -f (Get-Symbol -Symbol GreenCheckmark),$OlderVersions.count) -ForegroundColor Yellow
+                        }Else{
+                            Write-Host ("{0} Removed {1} zipped files" -f (Get-Symbol -Symbol GreenCheckmark),'0') -ForegroundColor Green
+                        }
+                    }
+
                     Write-Host ("{0}" -f (Get-Symbol -Symbol Hourglass)) -NoNewline
                     Write-Host (" Processed application in [") -ForegroundColor Green -NoNewline
                     Write-Host ("{0} seconds" -f [math]::Round($stopwatch.Elapsed.TotalSeconds,0)) -ForegroundColor Cyan -NoNewline
@@ -380,6 +464,8 @@ Foreach($Application in $ApplicationsList){
 
     
 }#end application loop
+
+
 
 #Export record
 $apps | Export-Clixml -Path "$ResourcePath\$($ToolkitSettings.Settings.appDownloadedFilePath)" -Force

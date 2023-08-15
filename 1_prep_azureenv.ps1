@@ -222,22 +222,27 @@ Foreach ($Provider in $AzureProviders){
 If($AibSupport){
     Write-Host ("`nValidating Azure Image builder is enabled for [{0}]..." -f ($currentAzContext).Environment.Name)
     If(($currentAzContext).Environment.Name -eq 'AzureUSGovernment'){
-        $AIBProvider = Get-AzResourceProvider -ProviderNamespace Microsoft.VirtualMachineImages -Location $ToolkitSettings.TenantEnvironment.location -ErrorAction SilentlyContinue
+        $AIBProviders = Get-AzResourceProvider -ProviderNamespace Microsoft.VirtualMachineImages -Location $ToolkitSettings.TenantEnvironment.location -ErrorAction SilentlyContinue
+        Register-AzProviderPreviewFeature -ProviderNamespace Microsoft.VirtualMachineImages -Name FairfaxPublicPreview
+        #Get-AzResourceProvider -ProviderNamespace Microsoft.VirtualMachineImages -Name FairfaxPublicPreview
+        Foreach($AIBProvider in $AIBProviders){
+            If($AIBProvider.RegistrationState -eq 'NotRegistered'){
+                Write-Host ("    |---Registering {0}..." -f $AIBProvider.ProviderNamespace) -NoNewline
+                Try{
+                    
+                    Register-AzResourceProvider -ProviderNamespace $AIBProvider.ProviderNamespace | Out-Null
+                    Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
+                }
+                Catch{
+                    Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Black -BackgroundColor Red
+                    Stop-Transcript;Break
+                }
         
-        If($AIBProvider.RegistrationState -eq 'NotRegistered'){
-            Write-Host ("    |---Registering {0}..." -f $AIBProvider.ProviderNamespace) -NoNewline
-            Try{
-                Register-AzResourceProvider -ProviderNamespace $AIBProvider.ProviderNamespace | Out-Null
-                Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
+            }Else{
+                Write-Host ("    |---{0} {1} Already registered" -f (Get-Symbol -Symbol GreenCheckmark),$AIBProvider.ProviderNamespace) -ForegroundColor Green
             }
-            Catch{
-                Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Black -BackgroundColor Red
-                Stop-Transcript;Break
-            }
-    
-        }Else{
-            Write-Host ("    |---{0} {1} Already registered" -f (Get-Symbol -Symbol GreenCheckmark),$AIBProvider.ProviderNamespace) -ForegroundColor Green
         }
+        
     }
     Else{
         #Write-Host ("Azure resource provider [Microsoft.VirtualMachineImages] is not available, unable to continue!") -ForegroundColor Red
@@ -822,7 +827,7 @@ If( ($ToolkitSettings.AzureResources.containerSasToken.Length -gt 0) -and !$Forc
         If((Get-Date) -gt $ExpiryDate){
             Write-Host ("expired on [") -NoNewline
             Write-Host ("{0}" -f $ExpiryDate.ToString()) -ForegroundColor Yellow -NoNewline
-            Write-Host ("]") -ForegroundColor -NoNewline
+            Write-Host ("]") -NoNewline
             Write-Host ("{0}" -f (Get-Symbol -Symbol WarningSign))
         }Else{
             Write-Host ("still valid until [") -NoNewline

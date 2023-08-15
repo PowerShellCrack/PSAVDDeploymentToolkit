@@ -14,4 +14,5 @@ applications_uploaded.xml
 applications_downloaded.xml
 thumbs.db
 *.zip*
-C3_build_IntuneWinApps.ps1
+3A_build_IntuneWinApps.ps1
+3B_build_MECMApps.ps1

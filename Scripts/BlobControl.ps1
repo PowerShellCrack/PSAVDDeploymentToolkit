@@ -132,6 +132,8 @@ Function Invoke-AzCopyToBlob {
         
     )
     Begin{
+        $env:SEE_MASK_NOZONECHECKS = 1
+
         #region AzCopy params
         $AzCopyCommonArguments = @('--put-md5=true','--skip-version-check=true')
             
@@ -210,6 +212,8 @@ Function Invoke-AzCopyToBlob {
             }
         }
     }End{
+        $env:SEE_MASK_NOZONECHECKS = 0
+
         #parse output file for last job status
         $Status = ([System.Text.RegularExpressions.Regex]::Match((Get-Content "$env:temp\stdout.txt" | Select -Last 2), '^(?<summary>.*):\s+(?<status>.*)$').Groups | Where Name -eq 'status').Value.Trim()
 

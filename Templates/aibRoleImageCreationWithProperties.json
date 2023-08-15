@@ -1,0 +1,25 @@
+{
+    "properties": {
+        "roleName": "AIB-RBAC",
+        "description": "Grants Azure Image Builder permission to work with Images ",
+        "assignableScopes": [
+            ""
+        ],
+        "permissions": [
+            {
+                "actions": [
+                    "Microsoft.Compute/galleries/read",
+                    "Microsoft.Compute/galleries/images/read",
+                    "Microsoft.Compute/galleries/images/versions/read",
+                    "Microsoft.Compute/galleries/images/versions/write",
+                    "Microsoft.Compute/images/read",
+                    "Microsoft.Compute/images/write",
+                    "Microsoft.Compute/images/delete"
+                ],
+                "notActions": [],
+                "dataActions": [],
+                "notDataActions": []
+            }
+        ]
+    }
+}

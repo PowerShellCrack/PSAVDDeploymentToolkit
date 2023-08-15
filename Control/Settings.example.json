@@ -9,12 +9,6 @@
                     "MSFTLinkDownloader",
                     "YetAnotherCMLogger"
                 ],
-                "offlineSupportingModules": [
-                    "MSFTLinkDownloader",
-                    "YetAnotherCMLogger",
-                    "PSWindowsUpdate",
-                    "LGPO"
-                ],
                 "recordToLaw": "false"
     },
 

@@ -208,6 +208,7 @@ Foreach($Module in $ToolkitSettings.Settings.offlineSupportingModules){
 ## ================================
 #TEST $SequenceItem = $ControlCustomizationData.customSequence[0]
 #TEST $SequenceItem = $ControlCustomizationData.customSequence[1]
+#TEST $SequenceItem = $ControlCustomizationData.customSequence[2]
 #TEST $SequenceItem = $ControlCustomizationData.customSequence | Where {$_.enabled -eq 'true' -and $_.type -eq 'Application'} | Select -First 1
 #TEST $SequenceItem = $ControlCustomizationData.customSequence[-6]
 $i=0
@@ -220,45 +221,74 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence){
         switch($SequenceItem.type){
             
             'Application' {
-                $AppUploadData = $UploadedApplications | Where id -eq $SequenceItem.id
+                #grab the upload metadata that matches
+                $AppUploadList = $UploadedApplications | Where id -eq $SequenceItem.id
+                #grab the application metadata that matches
                 $Application = $ApplicationsList | Where appId -eq $SequenceItem.id
-                If($AppUploadData){
-                    If( $AppUploadData.Uploaded -eq $true){
-                        Write-Host ("    |---Downloading [{0}]..." -f $AppUploadData.ArchiveFile) -NoNewline:$NoNewLine
-                        try{
-                            Invoke-RestCopyFromBlob -BlobFile $AppUploadData.ArchiveFile -Destination "$ApplicationsPath\$($AppUploadData.ArchiveFile)" @BlobCopyParams
-                            Write-Host ("Done") -ForegroundColor Green
-                        }Catch{
-                            Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red  
-                        }
-
-                        Write-Host ("    |---Extracting [{0}]..." -f $AppUploadData.ArchiveFile) -NoNewline:$NoNewLine
-                        Try{
-                            If( ($AppUploadData.Version -ne '[version]') -and ($AppUploadData.Version -ne 'latest') ){
-                                #update the object
-                                $Application.version = $AppUploadData.Version
-                                $AppDestinationPath = Join-Path (Expand-StringVariables -Object $Application -Property $Application.localPath -IncludeVariables) -ChildPath $AppVersion
-                                #$AppDestinationPath = "$ApplicationsPath\$($Application.localPath -replace '\s+|\W')\$AppVersion"
-                                New-Item $AppDestinationPath -ItemType Directory -ErrorAction SilentlyContinue -Force | Out-Null
-                    
-                            }Else{
-                                $AppDestinationPath = Join-Path (Expand-StringVariables -Object $Application -Property $Application.localPath -IncludeVariables) -ChildPath "Latest"
-                                New-Item $AppDestinationPath -ItemType Directory -ErrorAction SilentlyContinue -Force | Out-Null
+                
+                If($AppUploadList.count -gt 0){
+                    $a=0
+                    Foreach($AppUploadItem in $AppUploadList)
+                    {
+                        $a++
+                        If( $AppUploadItem.Uploaded -eq $true){
+                            Write-Host ("    |---[{0}/{1}] Downloading [{2}]..." -f $a,$AppUploadItem.count,$AppUploadItem.ArchiveFile) -NoNewline:$NoNewLine
+                            try{
+                                Invoke-RestCopyFromBlob -BlobFile $AppUploadItem.ArchiveFile -Destination "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" @BlobCopyParams
+                                Write-Host ("Done") -ForegroundColor Green
+                            }Catch{
+                                Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red  
                             }
-                            #update paths in application and build objects
-                            $SequenceItem.workingDirectory = $AppDestinationPath
-                            $Application.localPath = $AppDestinationPath
-
-                            #etract data to destination
-                            Expand-Archive "$ApplicationsPath\$($AppUploadData.ArchiveFile)" -DestinationPath $AppDestinationPath -Force
-                            Write-Host ("Done") -ForegroundColor Green
-                        }Catch{
-                            Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red  
+                        }Else{
+                            Write-Host ("    |---[{0}/{1}] file not found [{2}]; unable to download" -f $a,$AppUploadItem.count,$AppUploadItem.ArchiveFile) -ForegroundColor Yellow
+                            $ExtractFile = $false
                         }
-                        Remove-item "$ApplicationsPath\$($AppUploadData.ArchiveFile)" -ErrorAction SilentlyContinue -Force | Out-Null
+                    }#end loop of items
+
+                    #get one archive file (either single or first file of parts)
+                    If($AppUploadList.count -gt 1){
+                        $AppUploadItem = $AppUploadList
+                        Write-Host ("    |---Extracting [{0}]..." -f $AppUploadItem.ArchiveFile) -NoNewline:$NoNewLine
                     }Else{
-                        Write-Host ("    |---Application failed to upload; unable to download") -ForegroundColor Yellow
+                        $AppUploadItem = $AppUploadList | Where ArchiveFile -match '001$'
+                        Write-Host ("    |---Extracting {1} parts starting with [{0}]..." -f $AppUploadItem.ArchiveFile,$AppUploadList.count) -NoNewline:$NoNewLine
+                        
                     }
+
+                    If( ($AppUploadItem.Version -ne '[version]') -and ($AppUploadItem.Version -ne 'latest') ){
+                        #update the object
+                        $Application.version = $AppUploadItem.Version
+                        $AppDestinationPath = Join-Path (Expand-StringVariables -Object $Application -Property $Application.localPath -IncludeVariables) -ChildPath $AppVersion
+                        #$AppDestinationPath = "$ApplicationsPath\$($Application.localPath -replace '\s+|\W')\$AppVersion"
+                        New-Item $AppDestinationPath -ItemType Directory -ErrorAction SilentlyContinue -Force | Out-Null
+            
+                    }Else{
+                        $AppDestinationPath = Join-Path (Expand-StringVariables -Object $Application -Property $Application.localPath -IncludeVariables) -ChildPath "Latest"
+                        New-Item $AppDestinationPath -ItemType Directory -ErrorAction SilentlyContinue -Force | Out-Null
+                    }
+
+                    #update paths in application and build objects
+                    $SequenceItem.workingDirectory = $AppDestinationPath
+                    $Application.localPath = $AppDestinationPath
+
+                    
+                    Try{
+                        #extract data to destination
+                        If($AppUploadList.count -gt 1){
+                            Expand-Archive "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" -DestinationPath $AppDestinationPath -Force
+                        }Else{
+                            Expand-7zipArchive -SevenZipPath ($ToolsPath + '\7za.exe') -FilePath "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" -DestinationPath $AppDestinationPath -Force
+                        }
+                        Write-Host ("Done") -ForegroundColor Green
+                    }Catch{
+                        Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
+                        Continue
+                    }
+
+                    Foreach($File in $AppUploadList.ArchiveFile){
+                        Remove-item "$ApplicationsPath\$File" -ErrorAction SilentlyContinue -Force | Out-Null
+                    }
+                    
                 }Else{
                     Write-Host ("    |---Application was not uploaded. Unable to download") -ForegroundColor Yellow
                 }
