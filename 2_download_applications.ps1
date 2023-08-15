@@ -359,10 +359,13 @@ Foreach($Application in $ApplicationsList){
             Write-Host ("    |---Updating application version info...") -NoNewline:$NoNewLine
             If($version){
                 $Application.version = $version
-            }ElseIf($ApplicationVersion = Get-VersionInfo ($Localpath + '\' + $fileName)){
-                $Application.version = $ApplicationVersion
             }Else{
-                $Application.version = (Expand-StringVariables -Object $Application -Property $Application.version -IncludeVariables).Trim()
+                #attempt to get version from file properties; otherwisre default to version in json file
+                Try{
+                    $Application.version = Get-VersionInfo ($Localpath + '\' + $fileName)
+                }Catch{
+                    $Application.version = (Expand-StringVariables -Object $Application -Property $Application.version -IncludeVariables).Trim()
+                }
             }
             #record value
             $appObject | Add-Member -MemberType NoteProperty -Name Version -Value $Application.version
