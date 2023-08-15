@@ -1,6 +1,6 @@
 # A toolkit to build azure images with applications "offline" 
 
-This toolkit originated from the [PSAIBDeploymentToolkit](https://github.com/PowerShellCrack/PSAIBDeploymentToolkit) I am also developing, however I needed to develop a way to manage applications in an "offline" manor. This Toolkit does not use AIB instead it uses scripts that build images using the remote script command in Azure. This can support both Azure IL5 and IL6.
+This toolkit originated from the [PSAIBDeploymentToolkit](https://github.com/PowerShellCrack/PSAIBDeploymentToolkit). I am also developing that, however I needed to develop a way to manage applications in an "offline" manor. This Toolkit does not use AIB instead it uses scripts that build images using the remote Powershell command invoked in a Azure VM. This can support both Azure IL5 and IL6.
 
 The structure is similar to MDT's and each defined "sequenced" process is within the _Control_ folder and each "sequence" contains an **aib.json** file. This file is not a schema that follows the Azure Image builder schema, however with this file in conjunction with a basic template file (within the _Template_ folder), the _Applications\applications.json_ will **build and capture** a reference image for AVD consumption.
 
@@ -11,7 +11,7 @@ I am working to merge this toolkit with my AIB toolkit allowing it to support bo
 
 - Azure Subscriptions
 - Virtual network for reference image
-- The rest can be built using _A1_prep_azureenv.ps1_ script
+- The rest can be built using _1_prep_azureenv.ps1_ script
 
 # The Process
 
@@ -21,25 +21,28 @@ To support multiple environment and applications offline, these applications mus
 
 ```
 AVDDeploymentToolkit    
-    |-applications
+    |-Applications
         |--fslogix
         |--lgpo
         |--office365
         |--onedrive
         |--teams
-        |--etc
-    |-control
+        |--etc...
+    |-Control
         |--Win10AvdImage
             |---aib.json
         |--Win11AvdImage
             |---aib.json
-    |-scripts
+    |-Scripts
         |--supporting scripts
         |--VM
             |--sequence scripts
-    |-templates
+    |-Templates
         |--json files
         |--template scripts*
+    |-Tools
+        |--7za.exe
+        |--7za.dll
     |-Logs
         |--transaction logs for each script ran
 ```
@@ -47,11 +50,11 @@ AVDDeploymentToolkit
 
 Filename | Explanation | Access Requirements | Run Example | Recommended Cadence| Notes
 --|--|--|--|--|--
-A1_prep_azureenv.ps1|Sets up azure environment to support this toolkit and AIB| must have tenant access and Global Admin|```PS .\A1_prep_azureenv.ps1  -ControlSettings setting.test.json```|Monthly for sastoken renewal.| Sastoken can be generated manually if preferred (paste token in _settings.json_)
-A2_download_applications.ps1|Downloads applications and zips them up| must have internet access|```PS .\A2_download_applications.ps1 -ControlSettings setting.test.json -CompressForUpload```| Monthly |Can be ran on a internet device and files transferred to a tenant connect device from a media
-A3_upload_to_azureblob.ps1|Uploads archived applications to blob using sastoken| must have network access to blob storage|```PS .\A3_upload_to_azureblob.ps1  -ControlSettings setting.test.json```| Monthly
-A4_create_avd_ref_vm.ps1|Create Azure VM and runs prep script to install applications| must have tenant access and compute contributor role|```PS .\A4_create_avd_ref_vm.ps1 -ControlSettings setting.gov.json -Sequence Win11AvdGFEImage```| Monthly
-A5_create_vm_image.ps1|Sets up azure environment to support this toolkit and AIB| must have tenant access and compute contributor role|```PS .\A5_create_vm_image.ps1 -ControlSettings setting.test.json -ForceNewSasToken -Sequence Win11AvdGFEImage -VMName TEST-2306-REF -CleanUpVMOnCaptureSuccess```| Monthly |
+1_prep_azureenv.ps1|Sets up azure environment to support this toolkit and AIB| must have tenant access and Global Admin|```PS .\1_prep_azureenv.ps1  -ControlSettings setting.gov.json```|Monthly for sastoken renewal.| Sastoken can be generated manually if preferred (paste token in _settings.json_)
+2_download_applications.ps1|Downloads applications and zips them up| must have internet access|```PS .\2_download_applications.ps1 -ControlSettings setting.gov.json -CompressForUpload```| Monthly |Can be ran on a internet device and files transferred to a tenant connect device from a media
+3_upload_to_azureblob.ps1|Uploads archived applications to blob using sastoken| must have network access to blob storage|```PS .\3_upload_to_azureblob.ps1  -ControlSettings setting.gov.json```| Monthly
+4A_create_avd_ref_vm.ps1|Create Azure VM and runs prep script to install applications| must have tenant access and compute contributor role|```PS .\4A_create_avd_ref_vm.ps1 -ControlSettings setting.gov.json -Sequence Win11AvdGFEImage```| Monthly
+5A_create_vm_image_invokeposh.ps1|Sets up azure environment to support this toolkit and AIB| must have tenant access and compute contributor role|```PS .\5A_create_vm_image_invokeposh.ps1 -ControlSettings setting.gov.test.json -ForceNewSasToken -Sequence Win11AvdGFEImage -VMName TEST-2306-REF -CleanUpVMOnCaptureSuccess```| Monthly |
 
 > Each of these scripts have a dependency on at least on json file included in toolkit.
 
