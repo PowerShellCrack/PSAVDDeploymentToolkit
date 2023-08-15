@@ -349,10 +349,10 @@ Function Get-7zipUtilities{
 
     #Test if 7zip files exist
     $sevenzipfiles = @(
-    "$ToolsPath\7za.exe" #standalone console version of 7-Zip with reduced formats support.
-    "$ToolsPath\7za.dll" #library for working with 7z archives
-    "$ToolsPath\7zxa.exe" #library for extracting from 7z archives
-    "$ToolsPath\7zxa.dll" #library for extracting from 7z archives
+        "$ToolsPath\7za.exe" #standalone console version of 7-Zip with reduced formats support.
+        "$ToolsPath\7za.dll" #library for working with 7z archives
+        "$ToolsPath\7zxa.exe" #library for extracting from 7z archives
+        "$ToolsPath\7zxa.dll" #library for extracting from 7z archives
     )
 
     # Modern websites require TLS 1.2
@@ -397,9 +397,9 @@ Function Get-7zipUtilities{
     Catch{
         Write-Host ("Unable to setup 7-Zip. {0}" -f $_.Exception.Message) -ForegroundColor Red
         return $false
-    }
-    
+    }   
 }
+
 Function Compress-7zipArchive {
     <#
     .NOTES
