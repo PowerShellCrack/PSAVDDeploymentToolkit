@@ -154,8 +154,7 @@ $ToolkitSettings = Get-Content "$ResourcePath\Control\$ControlSettings" -Raw | C
 ##======================
 ## FUNCTIONS
 ##======================
-# Add AZ PS modules to support AzUserAssignedIdentity and Az AIB
-Import-Module 'Az.Accounts','Az.ImageBuilder','Az.ManagedServiceIdentity','Az.Resources','Az.Storage','Az.Compute','Az.Monitor','Az.KeyVault','Az.OperationalInsights'
+
 
 #region Sequencer custom functions
 . "$ResourcePath\Scripts\Environment.ps1"
@@ -163,9 +162,59 @@ Import-Module 'Az.Accounts','Az.ImageBuilder','Az.ManagedServiceIdentity','Az.Re
 . "$ResourcePath\Scripts\LogAnalytics.ps1"
 . "$ResourcePath\Scripts\BlobControl.ps1"
 
+
+# Add AZ PS modules to support AzUserAssignedIdentity and Az AIB
+##*=============================================
+##* INSTALL MODULES
+##*=============================================
+Write-Host ("`nSTARTING MODULE CHECK") -ForegroundColor Cyan
+
+If(Test-IsAdmin){
+    If(-NOT(Get-PackageProvider -Name Nuget)){Install-PackageProvider -Name Nuget -ForceBootstrap -RequiredVersion '2.8.5.201' -Force | Out-Null}
+    Write-Host ("    |---[{0} of {1}]: Checking install policy for PSGallery..." -f 1,($ToolkitSettings.Settings.supportingModules.count+1)) -NoNewline
+    If($PSGallery = Get-PSRepository -Name "PSGallery"){
+        If($PSGallery.InstallationPolicy -ne 'Trusted'){
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        }
+    }Else{
+        Register-PSRepository -Name "PSGallery" -SourceLocation "https://www.powershellgallery.com/api/v2/" -InstallationPolicy Trusted
+    }
+    Write-Host "Trusted" -ForegroundColor Green
+}
+
+$AzModuleList = @('Az.Accounts','Az.ImageBuilder','Az.ManagedServiceIdentity','Az.Resources','Az.Storage','Az.Compute','Az.Monitor','Az.KeyVault','Az.OperationalInsights')
+$i=1
+Foreach($Module in $AzModuleList){
+    $i++
+    Write-Host ("    |---[{0} of {1}]: Installing module {2}..." -f $i,($AzModuleList.count+1),$Module) -NoNewline:$NoNewLine
+    if ( Get-Module -FullyQualifiedName $Module -ListAvailable) {
+        Write-Host ("already installed") -ForegroundColor Green
+    }
+    else {
+        Try{
+            If(Test-IsAdmin){
+                # Needs to be installed as an admin so that the module will execte
+                Install-Module -Name $Module -ErrorAction Stop -Scope AllUsers | Out-Null
+                Import-Module -Name $Module -Global
+            }Else{
+                # Needs to be installed as an admin so that the module will execte
+                Install-Module -Name $Module -ErrorAction Stop | Out-Null
+                Import-Module -Name $Module
+            }
+            Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
+        }
+        Catch {
+            Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message)
+            exit
+        }
+    } 
+}
+
 #=======================================================
 # CONNECT TO AZURE
 #=======================================================
+Write-Host "AZURE SIGNIN..." -ForegroundColor Cyan
+
 Switch($ToolkitSettings.TenantEnvironment.azureEnvironment){
     'AzureUSPublic' {$blobUriAppendix = ".blob.core.windows.net"; $ToolkitSettings.TenantEnvironment.azureEnvironment = 'AzureCloud'}
     'AzureCloud' {$blobUriAppendix = ".blob.core.windows.net"}
@@ -830,7 +879,7 @@ If( ($ToolkitSettings.AzureResources.containerSasToken.Length -gt 0) -and !$Forc
             Write-Host ("]") -NoNewline
             Write-Host ("{0}" -f (Get-Symbol -Symbol WarningSign))
         }Else{
-            Write-Host ("still valid until [") -NoNewline
+            Write-Host ("still valid until [") -NoNewline -ForegroundColor Green
             Write-Host ("{0}" -f $ExpiryDate.ToString()) -ForegroundColor Cyan -NoNewline
             Write-Host ("]") -NoNewline
             Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))

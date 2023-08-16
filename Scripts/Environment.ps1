@@ -33,6 +33,37 @@ Function Test-VSCode{
 }
 #endregion
 
+Function Test-IsAdmin
+{
+<#
+.SYNOPSIS
+   Function used to detect if current user is an Administrator.
+
+.DESCRIPTION
+   Function used to detect if current user is an Administrator. Presents a menu if not an Administrator
+
+.NOTES
+    Name: Test-IsAdmin
+    Author: Dick Tracy
+    DateCreated: 30April2011
+
+.EXAMPLE
+    Test-IsAdmin
+
+#>
+    Write-Verbose "Checking to see if current user context is Administrator"
+    If (-NOT ([Security.Principal.WindowsPrincipal] [Security.Principal.WindowsIdentity]::GetCurrent()).IsInRole([Security.Principal.WindowsBuiltInRole] "Administrator"))
+    {
+        Write-Verbose "You are not currently running this under an Administrator account! `nThere is potential that this command could fail if not running under an Administrator account."
+        return $false
+    }
+    Else
+    {
+        Write-Verbose "Passed Administrator check"
+        return $true
+    }
+}
+
 function ConvertFrom-FixedColumnTable {
     <#
     .SYNOPSIS

@@ -165,29 +165,39 @@ If($PSBoundParameters.ContainsKey('ApplicationsOverrideFile')){
 ##*=============================================
 Write-Host ("`nSTARTING MODULE CHECK") -ForegroundColor Cyan
 
-If(-NOT(Get-PackageProvider -Name Nuget)){Install-PackageProvider -Name Nuget -ForceBootstrap -RequiredVersion '2.8.5.201' -Force | Out-Null}
-Write-Host ("    |---[{0} of {1}]: Checking install policy for PSGallery..." -f 1,($ToolkitSettings.Settings.supportingModules.count+1)) -NoNewline
-If($PSGallery = Get-PSRepository -Name "PSGallery"){
-    If($PSGallery.InstallationPolicy -ne 'Trusted'){
-        Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+If(Test-IsAdmin){
+    If(-NOT(Get-PackageProvider -Name Nuget)){Install-PackageProvider -Name Nuget -ForceBootstrap -RequiredVersion '2.8.5.201' -Force | Out-Null}
+    Write-Host ("    |---[{0} of {1}]: Checking install policy for PSGallery..." -f 1,($ToolkitSettings.Settings.supportingModules.count+1)) -NoNewline
+    If($PSGallery = Get-PSRepository -Name "PSGallery"){
+        If($PSGallery.InstallationPolicy -ne 'Trusted'){
+            Set-PSRepository -Name PSGallery -InstallationPolicy Trusted
+        }
+    }Else{
+        Register-PSRepository -Name "PSGallery" -SourceLocation "https://www.powershellgallery.com/api/v2/" -InstallationPolicy Trusted
     }
-}Else{
-    Register-PSRepository -Name "PSGallery" -SourceLocation "https://www.powershellgallery.com/api/v2/" -InstallationPolicy Trusted
+    Write-Host "Trusted" -ForegroundColor Green
 }
-Write-Host "Trusted" -ForegroundColor Green
+
 
 $i=1
 Foreach($Module in $ToolkitSettings.Settings.supportingModules){
     $i++
     Write-Host ("    |---[{0} of {1}]: Installing module {2}..." -f $i,($ToolkitSettings.Settings.supportingModules.count+1),$Module) -NoNewline:$NoNewLine
-    if ( Get-Module -FullyQualifiedName $Module -ListAvailable ) {
+    if ( Get-Module -FullyQualifiedName $Module -ListAvailable) {
         Write-Host ("already installed") -ForegroundColor Green
     }
     else {
         Try{
-            # Needs to be installed as an admin so that the module will execte
-            Install-Module -Name $Module -ErrorAction Stop
-            Import-Module -Name $Module
+            If(Test-IsAdmin){
+                # Needs to be installed as an admin so that the module will execte
+                Install-Module -Name $Module -ErrorAction Stop -Scope AllUsers | Out-Null
+                Import-Module -Name $Module -Global
+            }Else{
+                # Needs to be installed as an admin so that the module will execte
+                Install-Module -Name $Module -ErrorAction Stop | Out-Null
+                Import-Module -Name $Module
+            }
+            
             Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
         }
         Catch {
@@ -196,14 +206,6 @@ Foreach($Module in $ToolkitSettings.Settings.supportingModules){
         }
     } 
 }
-
-#Test if 7zip files exist
-$sevenzipfiles = @(
-    "$ToolsPath\7za.exe" #standalone console version of 7-Zip with reduced formats support.
-    "$ToolsPath\7za.dll" #library for working with 7z archives
-    "$ToolsPath\7zxa.exe" #library for extracting from 7z archives
-    "$ToolsPath\7zxa.dll" #library for extracting from 7z archives
-)
 
 
 ## ================================

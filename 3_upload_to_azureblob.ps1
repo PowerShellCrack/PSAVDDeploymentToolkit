@@ -125,6 +125,8 @@ Start-transcript "$LogsPath\$LogfileName" -ErrorAction Stop
 ## ================================
 ## GET SETTINGS
 ## ================================
+Write-Host "AZURE SIGNIN..." -ForegroundColor Cyan
+
 $ToolkitSettings = Get-Content "$ResourcePath\Control\$ControlSettings" -Raw | ConvertFrom-Json
 #grab envrionment info
 Switch($ToolkitSettings.TenantEnvironment.azureEnvironment){
@@ -137,13 +139,20 @@ Switch($ToolkitSettings.TenantEnvironment.azureEnvironment){
     }
 }
 
+# CONNECT TO AZURE
+Connect-AzAccount -Environment $ToolkitSettings.TenantEnvironment.azureEnvironment
+Set-AzContext -Subscription $ToolkitSettings.TenantEnvironment.subscriptionName
+
+# Step 2: get existing context
+$currentAzContext = Get-AzContext
+# your subscription, this will get your current subscription
+$subscriptionID=$currentAzContext.Subscription.Id
+
+Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true" | Out-Null
+
 #determine where to get sastoken
 If($ToolkitSettings.AzureResources.containerSasToken -eq '[KeyVault]'){ 
-    # CONNECT TO AZURE
-    Connect-AzAccount -Environment $ToolkitSettings.TenantEnvironment.azureEnvironment
-    Set-AzContext -Subscription $ToolkitSettings.TenantEnvironment.subscriptionName
 
-    Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true" | Out-Null
     # use sastoken stored in keyvault
     Try{
         $SasToken = Get-AzKeyVaultSecret -VaultName $ToolkitSettings.AzureResources.keyVault -Name $ToolkitSettings.AzureResources.storageContainer -AsPlainText
