@@ -79,13 +79,88 @@
     },
 
     {
-        "enabled": "falsr",
+        "enabled": "true",
         "download": "true",
-        "appId": "63a21a2d-6519-4749-8d63-1eb3ada59e73",
+        "appId": "a9617f50-7751-4036-8334-95a2e9e366f9",
         "productName" : "Teams Machine-Wide Installer",
         "version" : "latest",
         "localPath" : "[ApplicationsPath]\\Teams",
         "fileName": "Teams_windows_x64.msi",
+        "downloadURI" : "https://teams.microsoft.com/downloads/desktopurl?env=production&plat=windows&arch=x64&managedInstaller=true&download=true",
+        "downloadUriType" : "webrequest",
+        "installArguments" : "/quiet /norestart OPTIONS='noAutoStart=false' ALLUSER=1 ALLUSERS=1 /log \"[localPath]\\[fileName]_install.log\"",
+        "preInstallScript" : [
+            "#$TeamsUpdateExePath = '$env:LOCALAPPDATA\\Microsoft\\Teams\\Update.exe'",
+            "#If(Test-Path $TeamsUpdateExePath){$result = Start-Process -FilePath $TeamsUpdateExePath -ArgumentList '-uninstall -s' -Wait -Passthru -WindowStyle Hidden}",
+            "$MachineWide = Get-InstalledSoftware -Name \"[productName]\" -IncludeExeTypes",
+            "If($MachineWide){$result = Start-Process -FilePath msiexec.exe -ArgumentList \"/x $($MachineWide.GUID) /quiet /norestart /log [localPath]\\teams_uninstall.log\" -Wait -Passthru -WindowStyle Hidden}",
+            "New-ItemPath -Path \"HKLM:\\SOFTWARE\\Microsoft\\Teams\"",
+            "Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Teams\" -Name \"IsWVDEnvironment\" -Type DWord -Value 1 -Force"
+        ],
+        "postInstallScript" : [
+            "New-NetFirewallRule -DisplayName \"Teams.exe\" -Program \"%LocalAppData%\\Microsoft\\Teams\\current\\Teams.exe\" -Profile Domain -Direction Inbound -Action Allow -Protocol Any -EdgeTraversalPolicy Block | Out-Null",
+            "New-NetFirewallRule -DisplayName \"Teams.exe\" -Program \"%LocalAppData%\\Microsoft\\Teams\\current\\Teams.exe\" -Profile Public,Private -Direction Inbound -Action Block -Protocol Any -EdgeTraversalPolicy Block | Out-Null"
+        ]
+    },
+
+    {
+        "enabled": "true",
+        "download": "true",
+        "appId": "ed7707b8-2e32-48c7-9764-cbd28e55a6f1",
+        "productName" : "Teams Machine-Wide Installer",
+        "version" : "latest",
+        "localPath" : "[ApplicationsPath]\\TeamsGCC",
+        "fileName": "Teams_windows_x64_gcc.msi",
+        "downloadURI" : "https://teams.microsoft.com/downloads/desktopurl?env=production&plat=windows&arch=x64&managedInstaller=true&ring=general_gcc&download=true",
+        "downloadUriType" : "webrequest",
+        "installArguments" : "/quiet /norestart OPTIONS='noAutoStart=false' ALLUSER=1 ALLUSERS=1 /log \"[localPath]\\[fileName]_install.log\"",
+        "preInstallScript" : [
+            "#$TeamsUpdateExePath = '$env:LOCALAPPDATA\\Microsoft\\Teams\\Update.exe'",
+            "#If(Test-Path $TeamsUpdateExePath){$result = Start-Process -FilePath $TeamsUpdateExePath -ArgumentList '-uninstall -s' -Wait -Passthru -WindowStyle Hidden}",
+            "$MachineWide = Get-InstalledSoftware -Name \"[productName]\" -IncludeExeTypes",
+            "If($MachineWide){$result = Start-Process -FilePath msiexec.exe -ArgumentList \"/x $($MachineWide.GUID) /quiet /norestart /log [localPath]\\teams_uninstall.log\" -Wait -Passthru -WindowStyle Hidden}",
+            "New-ItemPath -Path \"HKLM:\\SOFTWARE\\Microsoft\\Teams\"",
+            "Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Teams\" -Name \"IsWVDEnvironment\" -Type DWord -Value 1 -Force"
+        ],
+        "postInstallScript" : [
+            "New-NetFirewallRule -DisplayName \"Teams.exe\" -Program \"%LocalAppData%\\Microsoft\\Teams\\current\\Teams.exe\" -Profile Domain -Direction Inbound -Action Allow -Protocol Any -EdgeTraversalPolicy Block | Out-Null",
+            "New-NetFirewallRule -DisplayName \"Teams.exe\" -Program \"%LocalAppData%\\Microsoft\\Teams\\current\\Teams.exe\" -Profile Public,Private -Direction Inbound -Action Block -Protocol Any -EdgeTraversalPolicy Block | Out-Null"
+        ]
+    },
+
+    {
+        "enabled": "true",
+        "download": "true",
+        "appId": "a8b8c020-ae91-4328-873a-995525379cc9",
+        "productName" : "Teams Machine-Wide Installer",
+        "version" : "latest",
+        "localPath" : "[ApplicationsPath]\\TeamsGCCH",
+        "fileName": "Teams_windows_x64_gcch.msi",
+        "downloadURI" : "https://gov.teams.microsoft.us/downloads/desktopurl?env=production&plat=windows&arch=x64&managedInstaller=true&download=true",
+        "downloadUriType" : "webrequest",
+        "installArguments" : "/quiet /norestart OPTIONS='noAutoStart=false' ALLUSER=1 ALLUSERS=1 /log \"[localPath]\\[fileName]_install.log\"",
+        "preInstallScript" : [
+            "#$TeamsUpdateExePath = '$env:LOCALAPPDATA\\Microsoft\\Teams\\Update.exe'",
+            "#If(Test-Path $TeamsUpdateExePath){$result = Start-Process -FilePath $TeamsUpdateExePath -ArgumentList '-uninstall -s' -Wait -Passthru -WindowStyle Hidden}",
+            "$MachineWide = Get-InstalledSoftware -Name \"[productName]\" -IncludeExeTypes",
+            "If($MachineWide){$result = Start-Process -FilePath msiexec.exe -ArgumentList \"/x $($MachineWide.GUID) /quiet /norestart /log [localPath]\\teams_uninstall.log\" -Wait -Passthru -WindowStyle Hidden}",
+            "New-ItemPath -Path \"HKLM:\\SOFTWARE\\Microsoft\\Teams\"",
+            "Set-ItemProperty -Path \"HKLM:\\SOFTWARE\\Microsoft\\Teams\" -Name \"IsWVDEnvironment\" -Type DWord -Value 1 -Force"
+        ],
+        "postInstallScript" : [
+            "New-NetFirewallRule -DisplayName \"Teams.exe\" -Program \"%LocalAppData%\\Microsoft\\Teams\\current\\Teams.exe\" -Profile Domain -Direction Inbound -Action Allow -Protocol Any -EdgeTraversalPolicy Block | Out-Null",
+            "New-NetFirewallRule -DisplayName \"Teams.exe\" -Program \"%LocalAppData%\\Microsoft\\Teams\\current\\Teams.exe\" -Profile Public,Private -Direction Inbound -Action Block -Protocol Any -EdgeTraversalPolicy Block | Out-Null"
+        ]
+    },
+
+    {
+        "enabled": "true",
+        "download": "true",
+        "appId": "63a21a2d-6519-4749-8d63-1eb3ada59e73",
+        "productName" : "Teams Machine-Wide Installer",
+        "version" : "latest",
+        "localPath" : "[ApplicationsPath]\\TeamsDoD",
+        "fileName": "Teams_windows_x64_dod.msi",
         "downloadURI" : "https://dod.teams.microsoft.us/downloads/desktopurl?env=production&plat=windows&arch=x64&managedInstaller=true&download=true",
         "downloadUriType" : "webrequest",
         "installArguments" : "/quiet /norestart OPTIONS='noAutoStart=false' ALLUSER=1 ALLUSERS=1 /log \"[localPath]\\[fileName]_install.log\"",
@@ -167,7 +242,7 @@
     },
 
     {
-        "enabled": "true",
+        "enabled": "false",
         "download": "true",
         "appId": "fc000041-3895-4b0b-b2c2-671d266c2991",
         "productName" : "Microsoft Visual Studio Code",
