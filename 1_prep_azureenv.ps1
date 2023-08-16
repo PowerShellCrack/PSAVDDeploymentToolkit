@@ -106,7 +106,7 @@ Param(
 
     } )]
     [Alias("Config","Setting")]
-    [string]$ControlSettings = "Settings.json",
+    [string]$ControlSettings = "settings.json",
 
     [switch]$ForceKeyVaultAdminSecret,
 
