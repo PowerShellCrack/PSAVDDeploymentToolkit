@@ -45,7 +45,7 @@ Write-Host "[string]`$ControlSettings = `"$ControlSettings`""
 ## ================================
 ## GET SETTINGS
 ## ================================
-$ControlCustomizationData = Get-Content "$ControlPath\$Sequence\aib.json" | ConvertFrom-Json
+$ControlCustomizationData = Get-Content "$ControlPath\$Sequence\sequence.json" | ConvertFrom-Json
 
 ## ================================
 ## MAIN
@@ -58,13 +58,13 @@ Switch($ControlCustomizationData.customSettings.cleanupAction){
         Write-Host ("Removing all files and folders from directory: {0}" -f $ResourcePath)
         Remove-Item $ResourcePath -Force -Recurse -ErrorAction SilentlyContinue | Out-Null
     }
-    
+
     'IgnoreLogs' {
         Write-Host ("Removing all files except logs from directory: {0}" -f $ResourcePath)
-        Get-ChildItem $ResourcePath -Exclude '*.logs' -Recurse | Remove-Item -ErrorAction SilentlyContinue | Out-Null 
+        Get-ChildItem $ResourcePath -Exclude '*.logs' -Recurse | Remove-Item -ErrorAction SilentlyContinue | Out-Null
     }
 
-    'JustExectuables' { 
+    'JustExectuables' {
         Write-Host ("Removing all executables from directory: {0} " -f $ResourcePath)
         Get-ChildItem $ResourcePath -Include '*.exe','*.msi' -Recurse | Remove-Item -ErrorAction SilentlyContinue | Out-Null
     }

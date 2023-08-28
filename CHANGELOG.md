@@ -1,5 +1,12 @@
 # Change log for AVDToolkitToolkit
 
+## 1.1.2 Aug 28, 2023
+
+- Changed aib.json to sequence.json; account Intune app management sequence
+- Fixed App upload for multiple parts; checks if part exists
+- Increased app downloads from blob using azcopy instead of webrequest.
+- Fixed Azure VM invoke-runcommand output; had null errors
+
 ## 1.1.1 Aug 16, 2023
 
 - Added to Application.json to support multiple versions of teams
@@ -9,10 +16,10 @@
 ## 1.1.0 Aug 14, 2023
 
 - Updated powershell scripts naming. Updates readme to reflect that
-- Fixed download application logic to process multiple files. 
-- Added ApplicationsOverrideFile parameter to ensure only updates apps exist and not older. 
+- Fixed download application logic to process multiple files.
+- Added ApplicationsOverrideFile parameter to ensure only updates apps exist and not older.
 - fixed some errors with sastoken processing in azure prep script
-- removed offline module control; no needed. 
+- removed offline module control; no needed.
 - removed detection rule from application.json
 - added zone fix for downloading apps from network; added unblock-file to fix warning message
 

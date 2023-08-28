@@ -48,11 +48,12 @@ Write-Host "[string]`$ControlSettings = `"$ControlSettings`""
 ## GET SETTINGS
 ## ================================
 $ApplicationsList = Get-Content "$ApplicationsPath\applications.json" | ConvertFrom-Json
-$ControlCustomizationData = Get-Content "$ControlPath\$Sequence\aib.json" | ConvertFrom-Json
+$ControlCustomizationData = Get-Content "$ControlPath\$Sequence\sequence.json" | ConvertFrom-Json
 $ToolkitSettings = Get-Content "$ControlPath\$ControlSettings" | ConvertFrom-Json
 
 #build dyanmic filter
-$filterScript = { $_.enabled -eq $true}
+$filterScript = @()
+$filterScript += { $_.enabled -eq $true}
 If($FilterSequenceType.count -gt 0){
     $filterScript += { $_.Type -in $FilterSequenceType}
 }
@@ -93,7 +94,7 @@ $i=0
 Foreach($Module in $ToolkitSettings.Settings.offlineSupportingModules){
     Write-Host ("`n[{0} of {1}] Processing module [{2}]..." -f $i,$ToolkitSettings.Settings.offlineSupportingModules.count,$Module )
     If($OfflineModule = $OfflineModules | Where Name -like "$Module*"){
-        
+
         $Name = $OfflineModule.BaseName.split('.')[0].Trim()
         $Version = ($OfflineModule.BaseName -replace '^\w+.').Trim()
         $ModuleDestination = "$env:ProgramFiles\WindowsPowerShell\Modules\$Name\$Version"
@@ -105,13 +106,13 @@ Foreach($Module in $ToolkitSettings.Settings.offlineSupportingModules){
             Install-Module $Name -Force
             Write-Host ("Done") -ForegroundColor Green
         }Catch{
-            Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red  
+            Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
         }
     }Else{
         Write-Host Write-Host ("    |---no offline modules exists in folder [{0}]" -f $ToolsPath) -ForegroundColor Yellow
     }
     $i++
-    
+
 }
 
 ## ================================
@@ -135,7 +136,7 @@ Foreach($SequenceItem in $FilteredCustomizations){
     switch($SequenceItem.type){
 
         'Application' {
-            
+
             #find the application's details associated with id
             $ApplicationData = $ApplicationsList | Where appId -eq $SequenceItem.id
 
@@ -171,11 +172,11 @@ Foreach($SequenceItem in $FilteredCustomizations){
                 {
                     $f++
                     $fileName = Expand-StringVariables -Object $ApplicationData -Property $fileName -IncludeVariables
-                    
+
                     If(Test-Path "$workingDirectory\$filename"){
 
                         $InstallerPath = Join-Path $workingDirectory -ChildPath $fileName
-                        
+
                         Try{
                             #run the pre process section
                             If($ApplicationData.psobject.properties | Where Name -eq 'installArguments' ){
@@ -226,7 +227,7 @@ Foreach($SequenceItem in $FilteredCustomizations){
                                     }
                                 }
                             }
-                            
+
 
                             #get results and see if they are valid
                             If($Result.ExitCode -in $SequenceItem.ValidExitCodes){
@@ -238,7 +239,7 @@ Foreach($SequenceItem in $FilteredCustomizations){
                                     Break
                                 }
                             }
-                            
+
                         }Catch{
                             Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
                         }
@@ -324,7 +325,7 @@ Foreach($SequenceItem in $FilteredCustomizations){
             If([System.Convert]::ToBoolean($SequenceItem.continueOnError) -eq $false){
                 Break
             }
-            
+
             If($SequenceItem.psobject.properties | Where Name -eq 'postUpdateScript' ){
                 Write-Host ("    |---Running post update script...") -NoNewline:$NoNewLine
                 Foreach($scriptline in $SequenceItem.postUpdateScript){

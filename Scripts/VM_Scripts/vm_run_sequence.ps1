@@ -20,7 +20,7 @@
     Specify a setting configuration file. Defaults to settings.json
 
     .PARAMETER Sequence
-    Specify a image configuration file (aib.json). Defaults to Win11AvdGFEImage
+    Specify a image configuration file (sequence.json). Defaults to Win11AvdGFEImage
 
     .EXAMPLE
     PS .\A5_run_sequence.ps1
@@ -78,7 +78,7 @@ Param(
     } )]
     [Alias("ImageBuild","Template")]
     [string]$Sequence="Win11AvdGFEImage"
-    
+
 )
 #=======================================================
 # VARIABLES
@@ -111,7 +111,7 @@ Start-transcript "$ResourcePath\Logs\$LogfileName" -ErrorAction Stop
 ## GET SETTINGS
 ## ================================
 $ApplicationsList = Get-Content "$ApplicationsPath\applications.json" | ConvertFrom-Json
-$ControlCustomizationData = Get-Content "$ControlPath\$Sequence\aib.json" | ConvertFrom-Json
+$ControlCustomizationData = Get-Content "$ControlPath\$Sequence\sequence.json" | ConvertFrom-Json
 $ToolkitSettings = Get-Content "$ControlPath\$ControlSettings" | ConvertFrom-Json
 
 
@@ -140,7 +140,7 @@ $i=0
 Foreach($Module in $ToolkitSettings.Settings.offlineSupportingModules){
     Write-Host ("`n[{0} of {1}] Processing module [{2}]..." -f $i,$ToolkitSettings.Settings.offlineSupportingModules.count,$Module )
     If($OfflineModule = $OfflineModules | Where Name -like "$Module*"){
-        
+
         $Name = $OfflineModule.BaseName.split('.')[0].Trim()
         $Version = ($OfflineModule.BaseName -replace '^\w+.').Trim()
         $ModuleDestination = "$env:ProgramFiles\WindowsPowerShell\Modules\$Name\$Version"
@@ -152,13 +152,13 @@ Foreach($Module in $ToolkitSettings.Settings.offlineSupportingModules){
             Install-Module $Name -Force
             Write-Host ("Done") -ForegroundColor Green
         }Catch{
-            Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red  
+            Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
         }
     }Else{
         Write-Host Write-Host ("    |---no offline modules exists in folder [{0}]" -f $ToolsPath) -ForegroundColor Yellow
     }
     $i++
-    
+
 }
 
 ## ================================
@@ -183,7 +183,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
         switch($SequenceItem.type){
 
             'Application' {
-                
+
                 #find the application's details associated with id
                 $ApplicationData = $ApplicationsList | Where appId -eq $SequenceItem.id
 
@@ -219,11 +219,11 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
                     {
                         $f++
                         $fileName = Expand-StringVariables -Object $ApplicationData -Property $fileName -IncludeVariables
-                       
+
                         If(Test-Path "$workingDirectory\$filename"){
 
                             $InstallerPath = Join-Path $workingDirectory -ChildPath $fileName
-                            
+
                             Try{
                                 #run the pre process section
                                 If($ApplicationData.psobject.properties | Where Name -eq 'installArguments' ){
@@ -274,7 +274,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
                                         }
                                     }
                                 }
-                                
+
 
                                 #get results and see if they are valid
                                 If($Result.ExitCode -in $SequenceItem.ValidExitCodes){
@@ -286,7 +286,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
                                         Break
                                     }
                                 }
-                                
+
                             }Catch{
                                 Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
                             }
@@ -372,7 +372,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
                 If([System.Convert]::ToBoolean($SequenceItem.continueOnError) -eq $false){
                     Break
                 }
-                
+
                 If($SequenceItem.psobject.properties | Where Name -eq 'postUpdateScript' ){
                     Write-Host ("    |---Running post update script...") -NoNewline:$NoNewLine
                     Foreach($scriptline in $SequenceItem.postUpdateScript){
@@ -396,13 +396,13 @@ Switch($ControlCustomizationData.customSettings.cleanupAction){
         Write-Host ("Removing all files and folders from directory: {0}" -f $ResourcePath)
         Remove-Item $ResourcePath -Force -Recurse -ErrorAction SilentlyContinue | Out-Null
     }
-    
+
     'IgnoreLogs' {
         Write-Host ("Removing all files except logs from directory: {0}" -f $ResourcePath)
-        Get-ChildItem $ResourcePath -Exclude '*.logs' -Recurse | Remove-Item -ErrorAction SilentlyContinue | Out-Null 
+        Get-ChildItem $ResourcePath -Exclude '*.logs' -Recurse | Remove-Item -ErrorAction SilentlyContinue | Out-Null
     }
 
-    'JustExectuables' { 
+    'JustExectuables' {
         Write-Host ("Removing all executables from directory: {0} " -f $ResourcePath)
         Get-ChildItem $ResourcePath -Include '*.exe','*.msi' -Recurse | Remove-Item -ErrorAction SilentlyContinue | Out-Null
     }
@@ -423,7 +423,7 @@ Switch($ControlCustomizationData.customSettings.finalAction){
 
     'Reboot' {
         Write-Host ("Rebooting: {0}" -f $env:COMPUTERNAME)
-        Restart-Computer -Force 
+        Restart-Computer -Force
     }
     default {#Do nothing
     }

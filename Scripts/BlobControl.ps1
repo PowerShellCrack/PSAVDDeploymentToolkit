@@ -1,5 +1,8 @@
 #https://docs.microsoft.com/en-us/azure/storage/blobs/storage-quickstart-blobs-powershell
 #https://docs.microsoft.com/en-us/azure/storage/scripts/storage-common-rotate-account-keys-powershell?toc=%2Fpowershell%2Fmodule%2Ftoc.json
+#https://learn.microsoft.com/en-us/azure/storage/common/storage-use-azcopy-files#download-a-file
+
+
 Function Set-StorageBlobPublicAccess {
     Param(
         $ResourceGroup,
@@ -225,6 +228,116 @@ Function Invoke-AzCopyToBlob {
     }
 }
 
+
+
+Function Invoke-AzCopyFromBlob {
+    [CmdletBinding()]
+    param (
+        [Parameter(Mandatory = $true)]
+        $AzCopyPath,
+        [Parameter(Mandatory = $true,ValueFromPipeline = $true)]
+        [Alias('FileName','BlobName')]
+        [string[]] $BlobFile,
+        [Parameter(Mandatory = $true,ValueFromPipeline = $true)]
+        [Alias('Source','BlobUri')]
+        [string[]] $SourceURL,
+        [Parameter(Mandatory = $true)]
+        [Alias('Destination','DestinationUri')]
+        [string] $DestinatioPath,
+        [string] $AddTags,
+        [switch]$PreserveTags,
+        [string] $SasToken,
+        [int] $ReportGap = 1,
+        [switch] $ShowProgress,
+        [String] $ProgressMsg,
+        [string[]] $ValidExitCodes = @(0,1),
+        [switch] $Force
+        
+    )
+    Begin{
+        $env:SEE_MASK_NOZONECHECKS = 1
+
+        #region AzCopy params
+        $AzCopyCommonArguments = @() 
+
+        If ($PreserveTags){
+            $AzCopyCommonArguments += '--s2s-preserve-blob-tags=true'
+        }
+
+        If ($AddTags){
+            $AzCopyCommonArguments += '--blob-tags=' + $AddTags
+        }
+        
+        If($SasToken){
+            $SourceURLAndSasToken = "$SourceURL/$BlobFile`?$SasToken"
+        }Else{
+            $SourceURLAndSasToken = "$SourceURL/$BlobFile"
+        }
+    }
+    Process{
+        #build full argumen tlist
+        $AzCopyArguments = @(
+            'copy'
+            """$SourceURLAndSasToken"""
+            """$DestinationPath\$BlobFile"""
+        )
+
+        If($Force){
+            $AzCopyCommonArguments += @(
+                '--overwrite=true'
+            )
+        }Else{
+            $AzCopyCommonArguments += @(
+                '--overwrite=false'
+            )
+        }
+        $AzCopyArguments += $AzCopyCommonArguments
+
+        #$AzCopyTestArguments = $AzCopyArguments + '--dry-run=true'
+        # Begin the AzCopy process
+        Write-Verbose -Message ('RUNNING COMMAND: {0} {1}' -f $AzCopyPath,($AzCopyArguments -join ' '));
+        $AzCopy = Start-Process -FilePath $AzCopyPath -ArgumentList $AzCopyArguments -RedirectStandardOutput "$env:temp\stdout.txt" -RedirectStandardError "$env:temp\stderr.txt" -WindowStyle Hidden -PassThru
+        Start-Sleep 5
+        #endregion Start AzCopy
+
+        $ErroredFiles = 0
+        #region Progress bar loop
+        while (!$AzCopy.HasExited) {
+            Start-Sleep $ReportGap
+            If($ShowProgress){
+                $TransferStatus = Get-Content -Path "$env:temp\stdout.txt" | Select -Last 1
+                If($TransferStatus -match '^\d+'){
+                    
+                    $DataSet = ($TransferStatus.split(',') -Replace '\w+$|%','')[0..4].Trim()
+                    If([int]$DataSet[2] -ne 0){$ErroredFiles=$DataSet[2]}
+                    If($ProgressMsg.Length -gt 0){Write-Status -Current $DataSet[0] -Total 100 -Statustext $ProgressMsg -CurStatusText ("Transferred {0}" -f $DataSet[0])}
+                    Write-Progress -Activity ('Transferring files to [{0}]' -f $Destination) -Status ("Copied {0} of {1} files..." -f $DataSet[1], $DataSet[4]) -PercentComplete $DataSet[0]
+                
+                }ElseIf([string]::IsNullOrWhiteSpace($TransferStatus) ){
+                    Write-Progress -Activity ('AzCopy status' -f $Destination) -Status "Nothing to report" -PercentComplete 100
+                
+                }Else{
+                    Write-Progress -Activity ('AzCopy status' -f $Destination) -Status "$TransferStatus" -PercentComplete 100
+                }
+                
+            }
+        }
+    }End{
+        $env:SEE_MASK_NOZONECHECKS = 0
+
+        #parse output file for last job status
+        $Status = ([System.Text.RegularExpressions.Regex]::Match((Get-Content "$env:temp\stdout.txt" | Select -Last 2), '^(?<summary>.*):\s+(?<status>.*)$').Groups | Where Name -eq 'status').Value.Trim()
+
+        #send out proper output
+        switch ($Status){
+            'Completed' {Write-Output $Status}
+            default {Write-Error $Status}
+        }
+    }
+}
+
+
+
 function Write-Status 
 {
   
@@ -343,7 +456,7 @@ function Invoke-RestCopyToBlob{
     .DESCRIPTION
     This function leverages the Azure Rest API to upload a file into a blob storage using a SAS token.
 
-    .PARAMETER file
+    .PARAMETER FullName
     Absolute path of the file to upload
 
     .PARAMETER BlobUrl
@@ -358,10 +471,9 @@ function Invoke-RestCopyToBlob{
 #>
     [CmdletBinding()]
     Param(
-        [Parameter(Mandatory = $true,ValueFromPipeline = $true)]
-        [ValidateScript({Test-Path $_ })]
-        [Alias('FilePath')]
-        [string[]]$SourcePath,
+        [Parameter(Mandatory = $true,ValueFromPipeline = $true, ValueFromPipelineByPropertyName = $true, Position=1)]
+        [Alias('SourcePath','FilePath')]
+        [string[]]$FullName,
 
         [Parameter(Mandatory=$true)]
         [string] $BlobUrl,
@@ -370,20 +482,28 @@ function Invoke-RestCopyToBlob{
         [string] $SasToken
     )
     Begin{
-        
+        Write-Verbose ("Starting transfer to [{0}]" -f $BlobUrl)
     }
     Process{
-        $Filename = Split-Path $SourcePath -Leaf
-        $uri = ($BlobUrl + '/' + $Filename +'?' + $SasToken)
-        $headers = @{"x-ms-blob-type" = "BlockBlob"}
-        
-        Write-Verbose ("Starting transfer [{0}] to blob" -f $SourcePath)
-        try{
-            Write-Verbose ("COMMAND: Invoke-WebRequest `"$uri`" -Method Put -InFile `"$SourcePath`" -Headers {0}" -f (($headers.GetEnumerator()| %{$_.Name + ": " + $_.Value}) -join ','))
-            Invoke-WebRequest $uri -Method Put -InFile $SourcePath -Headers $headers
-        }Catch{
-            Write-Error ("Failed. {0}" -f $_.Exception.Message)
+        Foreach($FilePath in $FullName){
+            If(Test-Path $FilePath -ErrorAction SilentlyContinue){
+                $Filename = Split-Path $FilePath -Leaf
+                $uri = ($BlobUrl + '/' + $Filename +'?' + $SasToken)
+                $headers = @{"x-ms-blob-type" = "BlockBlob"}
+                
+                Write-Verbose ("Starting transfer [{0}] to blob" -f $FilePath)
+                try{
+                    Write-Verbose ("COMMAND: Invoke-WebRequest `"$uri`" -Method Put -InFile `"$FilePath`" -Headers {0}" -f (($headers.GetEnumerator()| %{$_.Name + ": " + $_.Value}) -join ','))
+                    $result = Invoke-WebRequest $uri -Method Put -InFile $FilePath -Headers $headers
+                }Catch{
+                    Write-Error ("Failed. {0}" -f $_.Exception.Message)
+                }
+            }Else{
+                Write-Error ("File not found! [{0}]" -f $FilePath)
+            }
+            
         }
+        
     }End{
         Write-Verbose ("Completed transfer to [{0}]" -f $BlobUrl)
     }

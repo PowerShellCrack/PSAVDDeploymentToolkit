@@ -7,7 +7,10 @@ Param(
     [string]$Sequence="<sequence>",
     [string]$ControlSettings = "<settings>",
     [string]$BlobUrl="<bloburl>",
-    [string]$SasToken="<sastoken>"
+    [string]$SasToken="<sastoken>",
+    [string[]]$FilterSequenceType = @('Application','Script'),
+    [string[]]$FilterSequenceName = @(),
+    [string[]]$ExcludeSequenceName = @('Microsoft 365 Apps for enterprise - en-us','Microsoft Visio - en-us','Microsoft Project - en-us')
 )
 #=======================================================
 # VARIABLES
@@ -79,7 +82,7 @@ Foreach($Folder in $AVDToolkitFolders){
         Invoke-WebRequest $uri -ContentType "application/zip"  -OutFile "$ImportsPath\$DepFileName" -UseBasicParsing
         Write-Host ("Done") -ForegroundColor Green
     }Catch{
-        Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red  
+        Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
     }
 
     Write-Host ("    |---Extracting {0}..." -f $DepFileName) -NoNewline:$NoNewLine
@@ -89,7 +92,7 @@ Foreach($Folder in $AVDToolkitFolders){
         Remove-item "$ImportsPath\$DepFileName" -ErrorAction SilentlyContinue -Force | Out-Null
         Write-Host ("Done") -ForegroundColor Green
     }Catch{
-        Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red  
+        Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
     }
 }
 
@@ -106,7 +109,7 @@ Foreach($Item in $AVDDeploymentFiles.GetEnumerator()){
     $i++
     Write-Host ("`n[{0}/{1}] Processing file [{2}]..." -f $i,$AVDDeploymentFiles.count,$Item.Name )
     $uri = ($BlobUrl + '/' + $Item.Name +'?' + $SasToken)
-    $Extension = [System.IO.Path]::GetExtension($Item.Name)   
+    $Extension = [System.IO.Path]::GetExtension($Item.Name)
     switch($Extension){
         '.json' {$ContentType="application/json"}
         '.xml'  {$ContentType="text/xml"}
@@ -120,7 +123,7 @@ Foreach($Item in $AVDDeploymentFiles.GetEnumerator()){
         Invoke-WebRequest $uri -ContentType $ContentType -OutFile "$($Item.Value)\$($Item.Name)" -UseBasicParsing
         Write-Host ("Done") -ForegroundColor Green
     }Catch{
-        Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red  
+        Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
     }
 }
 
@@ -134,17 +137,17 @@ Foreach($Item in $AVDDeploymentFiles.GetEnumerator()){
 ## GET SETTINGS
 ## ================================
 #import exported apps list from last run (this allows to check if downloaded recent)
-If( (Test-Path "$ApplicationsPath\applications.json") -and (Test-Path "$ApplicationsPath\applications_uploaded.xml") -and (Test-Path "$ControlPath\$Sequence\aib.json") -and (Test-Path "$ControlPath\$ControlSettings") ){
+If( (Test-Path "$ApplicationsPath\applications.json") -and (Test-Path "$ApplicationsPath\applications_uploaded.xml") -and (Test-Path "$ControlPath\$Sequence\sequence.json") -and (Test-Path "$ControlPath\$ControlSettings") ){
     $ApplicationsList = (Get-Content "$ApplicationsPath\applications.json") | ConvertFrom-Json
     $UploadedApplications = Import-Clixml "$ApplicationsPath\applications_uploaded.xml"
-    $ControlCustomizationData = (Get-Content "$ControlPath\$Sequence\aib.json") | ConvertFrom-Json
+    $ControlCustomizationData = (Get-Content "$ControlPath\$Sequence\sequence.json") | ConvertFrom-Json
     $ToolkitSettings = (Get-Content "$ControlPath\$ControlSettings") | ConvertFrom-Json
 }Else{
     Write-Host "Unable to retrieve list of applications, needed files..." -ForegroundColor Red
-    Write-Host "  $ApplicationsPath\applications.json" -ForegroundColor Red 
-    Write-Host "  $ApplicationsPath\applications_uploaded.xml" -ForegroundColor Red 
-    Write-Host "  $ControlPath\$Sequence\aib.json" -ForegroundColor Red 
-    Write-Host "  $ControlPath\$ControlSettings" -ForegroundColor Red 
+    Write-Host "  $ApplicationsPath\applications.json" -ForegroundColor Red
+    Write-Host "  $ApplicationsPath\applications_uploaded.xml" -ForegroundColor Red
+    Write-Host "  $ControlPath\$Sequence\sequence.json" -ForegroundColor Red
+    Write-Host "  $ControlPath\$ControlSettings" -ForegroundColor Red
     Write-Host "`nPlease run [" -ForegroundColor Red -NoNewline
     Write-Host "A3_upload_to_azureblob.ps1" -ForegroundColor Cyan -NoNewline
     Write-Host "] prior to this step to prep blob storage" -ForegroundColor Red
@@ -162,9 +165,15 @@ Foreach($Setting in $ControlCustomizationData.customSettings){
     }
 }
 
-$BlobCopyParams = @{
+$BlobRestParams = @{
     SasToken = $SasToken
     BlobUrl = $BlobUrl
+}
+
+$BlobAzCopyParams = @{
+    SasToken = $SasToken
+    SourceUrl = $BlobUrl
+    AzCopyPath="$ToolsPath\azcopy.exe"
 }
 ## ================================
 ## IMPORT OFFLINE MODULES
@@ -182,7 +191,7 @@ $i=0
 Foreach($Module in $ToolkitSettings.Settings.offlineSupportingModules){
     Write-Host ("`n[{0}/{1}] Processing module [{2}]..." -f $i,$ToolkitSettings.Settings.offlineSupportingModules.count,$Module )
     If($OfflineModule = $OfflineModules | Where Name -like "$Module*"){
-        
+
         $Name = $OfflineModule.BaseName.split('.')[0].Trim()
         $Version = ($OfflineModule.BaseName -replace '^\w+.').Trim()
         $ModuleDestination = "$env:ProgramFiles\WindowsPowerShell\Modules\$Name\$Version"
@@ -194,38 +203,57 @@ Foreach($Module in $ToolkitSettings.Settings.offlineSupportingModules){
             Install-Module $Name -Force
             Write-Host ("Done") -ForegroundColor Green
         }Catch{
-            Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red  
+            Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
         }
     }Else{
         Write-Host ("    |---no offline modules exists in folder [{0}]" -f $ToolsPath) -ForegroundColor Yellow
     }
     $i++
-    
+
 }
 
 ## ================================
 ## DOWNLOAD APPS
 ## ================================
-#TEST $SequenceItem = $ControlCustomizationData.customSequence[0]
-#TEST $SequenceItem = $ControlCustomizationData.customSequence[1]
-#TEST $SequenceItem = $ControlCustomizationData.customSequence[2]
-#TEST $SequenceItem = $ControlCustomizationData.customSequence | Where {$_.enabled -eq 'true' -and $_.type -eq 'Application'} | Select -First 1
-#TEST $SequenceItem = $ControlCustomizationData.customSequence[-6]
+
+#build dyanmic filter
+$filterScript = @()
+$filterScript += { $_.enabled -eq $true}
+If($FilterSequenceType.count -gt 0){
+    $filterScript += { $_.Type -in $FilterSequenceType}
+}
+
+If($FilterSequenceName.count -gt 0){
+    $filterScript += { $_.Name -in $FilterSequenceName}
+
+}
+If($ExcludeSequenceName.count -gt 0){
+    $filterScript += { $_.Name -notin $ExcludeSequenceName}
+}
+#combine filter into one scripblock
+$JoinedFilterScript = [scriptblock]::Create($filterScript -join ' -and')
+#select only steps that are filtered to match name and type
+$FilteredCustomizations = ($ControlCustomizationData.customSequence | Where -FilterScript $JoinedFilterScript)
+
 $i=0
-Foreach($SequenceItem in $ControlCustomizationData.customSequence){
+#TEST $SequenceItem = $ControlCustomizationData.customSequence[9]
+#TEST $SequenceItem = $ControlCustomizationData.customSequence[0]
+#TEST $SequenceItem = $ControlCustomizationData.customSequence[13]
+#TEST $SequenceItem = $FilteredCustomizations[1]
+Foreach($SequenceItem in $FilteredCustomizations){
     $i++
-    Write-Host ("`n[{0}/{1}] Processing {2} [{3}]..." -f $i,$ControlCustomizationData.customSequence.count,$SequenceItem.type,$SequenceItem.name )
-    
+    Write-Host ("`n[{0}/{1}] Processing {2} [{3}]..." -f $i,$FilteredCustomizations.count,$SequenceItem.type,$SequenceItem.name )
+
     If([System.Convert]::ToBoolean($SequenceItem.enabled))
     {
         switch($SequenceItem.type){
-            
+
             'Application' {
                 #grab the upload metadata that matches
                 $AppUploadList = $UploadedApplications | Where id -eq $SequenceItem.id
                 #grab the application metadata that matches
                 $Application = $ApplicationsList | Where appId -eq $SequenceItem.id
-                
+
                 If($AppUploadList.count -gt 0){
                     $a=0
                     Foreach($AppUploadItem in $AppUploadList)
@@ -234,10 +262,13 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence){
                         If( $AppUploadItem.Uploaded -eq $true){
                             Write-Host ("    |---[{0}/{1}] Downloading [{2}]..." -f $a,$AppUploadItem.count,$AppUploadItem.ArchiveFile) -NoNewline:$NoNewLine
                             try{
-                                Invoke-RestCopyFromBlob -BlobFile $AppUploadItem.ArchiveFile -Destination "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" @BlobCopyParams
+                                Invoke-AzCopyFromBlob -BlobFile $AppUploadItem.ArchiveFile -DestinatioPath $ApplicationsPath @BlobAzCopyParams -Force
+                                #Invoke-RestCopyFromBlob -BlobFile $AppUploadItem.ArchiveFile -Destination "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" @BlobRestParams
                                 Write-Host ("Done") -ForegroundColor Green
+                                $ExtractFile = $true
                             }Catch{
-                                Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red  
+                                Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
+                                $ExtractFile = $false
                             }
                         }Else{
                             Write-Host ("    |---[{0}/{1}] file not found [{2}]; unable to download" -f $a,$AppUploadItem.count,$AppUploadItem.ArchiveFile) -ForegroundColor Yellow
@@ -245,57 +276,60 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence){
                         }
                     }#end loop of items
 
-                    #get one archive file (either single or first file of parts)
-                    If($AppUploadList.count -gt 1){
-                        $AppUploadItem = $AppUploadList
-                        Write-Host ("    |---Extracting [{0}]..." -f $AppUploadItem.ArchiveFile) -NoNewline:$NoNewLine
-                    }Else{
-                        $AppUploadItem = $AppUploadList | Where ArchiveFile -match '001$'
-                        Write-Host ("    |---Extracting {1} parts starting with [{0}]..." -f $AppUploadItem.ArchiveFile,$AppUploadList.count) -NoNewline:$NoNewLine
-                        
-                    }
-
-                    If( ($AppUploadItem.Version -ne '[version]') -and ($AppUploadItem.Version -ne 'latest') ){
-                        #update the object
-                        $Application.version = $AppUploadItem.Version
-                        $AppDestinationPath = Join-Path (Expand-StringVariables -Object $Application -Property $Application.localPath -IncludeVariables) -ChildPath $AppVersion
-                        #$AppDestinationPath = "$ApplicationsPath\$($Application.localPath -replace '\s+|\W')\$AppVersion"
-                        New-Item $AppDestinationPath -ItemType Directory -ErrorAction SilentlyContinue -Force | Out-Null
-            
-                    }Else{
-                        $AppDestinationPath = Join-Path (Expand-StringVariables -Object $Application -Property $Application.localPath -IncludeVariables) -ChildPath "Latest"
-                        New-Item $AppDestinationPath -ItemType Directory -ErrorAction SilentlyContinue -Force | Out-Null
-                    }
-
-                    #update paths in application and build objects
-                    $SequenceItem.workingDirectory = $AppDestinationPath
-                    $Application.localPath = $AppDestinationPath
-
-                    
-                    Try{
-                        #extract data to destination
+                    If($ExtractFile)
+                    {
+                        #get one archive file (either single or first file of parts)
                         If($AppUploadList.count -gt 1){
-                            Expand-Archive "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" -DestinationPath $AppDestinationPath -Force
+                            $AppUploadItem = $AppUploadList
+                            $ExtractParts = $false
                         }Else{
-                            Expand-7zipArchive -SevenZipPath ($ToolsPath + '\7za.exe') -FilePath "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" -DestinationPath $AppDestinationPath -Force
+                            $AppUploadItem = $AppUploadList | Where ArchiveFile -match '001$'
+                            $ExtractParts = $true
                         }
-                        Write-Host ("Done") -ForegroundColor Green
-                    }Catch{
-                        Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
-                        Continue
+
+                        If( ($AppUploadItem.Version -ne '[version]') -and ($AppUploadItem.Version -ne 'latest') ){
+                            #update the object
+                            $Application.version = $AppUploadItem.Version
+                            $AppDestinationPath = Join-Path (Expand-StringVariables -Object $Application -Property $Application.localPath -IncludeVariables) -ChildPath $AppVersion
+                            #$AppDestinationPath = "$ApplicationsPath\$($Application.localPath -replace '\s+|\W')\$AppVersion"
+                            New-Item $AppDestinationPath -ItemType Directory -ErrorAction SilentlyContinue -Force | Out-Null
+
+                        }Else{
+                            $AppDestinationPath = Join-Path (Expand-StringVariables -Object $Application -Property $Application.localPath -IncludeVariables) -ChildPath "Latest"
+                            New-Item $AppDestinationPath -ItemType Directory -ErrorAction SilentlyContinue -Force | Out-Null
+                        }
+
+                        #update paths in application and build objects
+                        $SequenceItem.workingDirectory = $AppDestinationPath
+                        $Application.localPath = $AppDestinationPath
+
+                        Try{
+                            #extract data to destination
+                            If($ExtractParts){
+                                Write-Host ("    |---Extracting {1} parts starting with [{0}]..." -f $AppUploadItem.ArchiveFile,$AppUploadList.count) -NoNewline:$NoNewLine
+                                Expand-7zipArchive -SevenZipPath ($ToolsPath + '\7za.exe') -FilePath "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" -DestinationPath $AppDestinationPath -Force
+                            }Else{
+                                Write-Host ("    |---Extracting [{0}]..." -f $AppUploadItem.ArchiveFile) -NoNewline:$NoNewLine
+                                Expand-Archive "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" -DestinationPath $AppDestinationPath -Force
+                            }
+                            Write-Host ("Done") -ForegroundColor Green
+                        }Catch{
+                            Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
+                            Continue
+                        }
+
+                        Foreach($File in $AppUploadList.ArchiveFile){
+                            Remove-item "$ApplicationsPath\$File" -ErrorAction SilentlyContinue -Force | Out-Null
+                        }
                     }
 
-                    Foreach($File in $AppUploadList.ArchiveFile){
-                        Remove-item "$ApplicationsPath\$File" -ErrorAction SilentlyContinue -Force | Out-Null
-                    }
-                    
                 }Else{
                     Write-Host ("    |---Application was not uploaded. Unable to download") -ForegroundColor Yellow
                 }
 
-                
+
             }#end app switch
-            
+
             'Script' {
                 #DO NOTHING
             }#end script switch
@@ -307,11 +341,11 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence){
     }Else{
         Write-Host ("    |---not enabled to run") -ForegroundColor Yellow
     }
-    
+
 }
 #update json wih version values
 $ApplicationsList | ConvertTo-Json | Out-File "$ApplicationsPath\applications.json" -Force
-$ControlCustomizationData | ConvertTo-Json -Depth 5 | Out-File "$ControlPath\$Sequence\aib.json" -Force
+$ControlCustomizationData | ConvertTo-Json -Depth 5 | Out-File "$ControlPath\$Sequence\sequence.json" -Force
 
 $global:ProgressPreference = $prevProgressPreference
 Stop-Transcript -ErrorAction SilentlyContinue

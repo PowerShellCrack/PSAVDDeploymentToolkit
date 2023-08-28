@@ -41,7 +41,7 @@ ForEach ($vm in $AllVMs | Where Tags -ne $null) {
         Write-Output ('VM [{0}] has no [StartupOrder] tag; ignoring' -f $vm.name)
         Continue
     }
-    
+
 }
 
 #display vm with tags
@@ -89,6 +89,6 @@ Do{
     Else{
         Write-Output ("No VM found with StartupOrder: {0}" -f $current)
     }
-    
+
 }
 Until ($current -eq $StartupEndCount)

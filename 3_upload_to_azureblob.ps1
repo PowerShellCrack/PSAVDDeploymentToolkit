@@ -80,6 +80,8 @@ Param(
     [Alias("Config","Setting")]
     [string]$ControlSettings = "settings.json",
 
+    [switch]$SkipAppUploads,
+
     [switch]$BlobCleanup
 )
 
@@ -198,83 +200,83 @@ If(Test-Path "$ResourcePath\$($ToolkitSettings.Settings.appDownloadedFilePath)" 
 
 #TEST $Application = $ArchivedApplications | Select -First 1
 #TEST $Application = $ArchivedApplications[3]
-$i = 0
-$apps = @()
-Foreach($Application in $ArchivedApplications){
-    $i++
-    Write-Host ("`n[{0}/{1}] Uploaded application [{2} (v{3})]..." -f $i,$ArchivedApplications.count,$Application.ProductName,$Application.version.replace('[version]','') )
-
-    $f=0
-    #TEST $Filename = $Application.ArchiveFile | Select -first 1
-    Foreach($Filename in $Application.ArchiveFile){
-        $f++
-        
-        $appObject = New-Object pscustomobject    
-        $appObject | Add-Member -MemberType NoteProperty -Name Id -Value $Application.Id
-        $appObject | Add-Member -MemberType NoteProperty -Name ProductName -Value $Application.ProductName
-        $appObject | Add-Member -MemberType NoteProperty -Name Version -Value $Application.Version
-        $appObject | Add-Member -MemberType NoteProperty -Name DateUploaded -Value (Get-Date)
-        $appObject | Add-Member -MemberType NoteProperty -Name UploadSourcePath -Value ($BlobUrl + '/' + $Filename)
-        $appObject | Add-Member -MemberType NoteProperty -Name ArchiveFile -Value $Filename
-        
-        Write-Host ("    |---[{0}/{1}] file uploading [" -f $f,$Application.ArchiveFile.count) -NoNewline
-        Write-Host ("{0}" -f $Filename) -ForegroundColor Cyan -NoNewline
-        Write-Host ("]...") -NoNewline:$NoNewLine
-        
-        $BlobFileExists = $false
-        If(Get-AzStorageBlob -Container $ToolkitSettings.AzureResources.storageContainer -Context $Ctx -Prefix $Filename -ErrorAction SilentlyContinue){
-            $BlobFileExists = $True
-        }
-
-        If($BlobFileExists -ne $True){
-            try{         
-                #Invoke-RestCopyToBlob -SourcePath $Application.ExportedPath @RestCopyParams
-                $Results = Invoke-AzCopyToBlob -Source ($Application.ExportedPath + '\'+ $Filename) @BlobCopyParams -ShowProgress
-                $Uploaded = $true
-                Write-Host ("{0} {1}" -f (Get-Symbol -Symbol GreenCheckmark),($Results -join '')) -ForegroundColor Green                
-            }Catch{
-                $Uploaded = $false
-                Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red
+If(!$SkipAppUploads){
+    $i = 0
+    $apps = @()
+    Foreach($Application in $ArchivedApplications){
+        $i++
+        Write-Host ("`n[{0}/{1}] Uploaded application [{2} (v{3})]..." -f $i,$ArchivedApplications.count,$Application.ProductName,$Application.version.replace('[version]','') )
+    
+        $f=0
+        #TEST $Filename = $Application.ArchiveFile | Select -first 1
+        Foreach($Filename in $Application.ArchiveFile){
+            $f++
+            
+            $appObject = New-Object pscustomobject    
+            $appObject | Add-Member -MemberType NoteProperty -Name Id -Value $Application.Id
+            $appObject | Add-Member -MemberType NoteProperty -Name ProductName -Value $Application.ProductName
+            $appObject | Add-Member -MemberType NoteProperty -Name Version -Value $Application.Version
+            $appObject | Add-Member -MemberType NoteProperty -Name DateUploaded -Value (Get-Date)
+            $appObject | Add-Member -MemberType NoteProperty -Name UploadSourcePath -Value ($BlobUrl + '/' + $Filename)
+            $appObject | Add-Member -MemberType NoteProperty -Name ArchiveFile -Value $Filename
+            
+            Write-Host ("    |---[{0}/{1}] file uploading [" -f $f,$Application.ArchiveFile.count) -NoNewline
+            Write-Host ("{0}" -f $Filename) -ForegroundColor Cyan -NoNewline
+            Write-Host ("]...") -NoNewline:$NoNewLine
+            
+            $BlobFileExists = $false
+            If(Get-AzStorageBlob -Container $ToolkitSettings.AzureResources.storageContainer -Context $Ctx -Prefix $Filename -ErrorAction SilentlyContinue){
+                $BlobFileExists = $True
             }
-        }Else{
-            #mimic upload
-            Write-Host ("{0} already exists" -f (Get-Symbol -Symbol GreenCheckmark)) -ForegroundColor Green
-            $Uploaded = $true
+    
+            If($BlobFileExists -ne $True){
+                try{         
+                    #Invoke-RestCopyToBlob -SourcePath $Application.ExportedPath @RestCopyParams
+                    $Results = Invoke-AzCopyToBlob -Source ($Application.ExportedPath + '\'+ $Filename) @BlobCopyParams -ShowProgress
+                    $Uploaded = $true
+                    Write-Host ("{0} {1}" -f (Get-Symbol -Symbol GreenCheckmark),($Results -join '')) -ForegroundColor Green                
+                }Catch{
+                    $Uploaded = $false
+                    Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red
+                }
+            }Else{
+                #mimic upload
+                Write-Host ("{0} already exists" -f (Get-Symbol -Symbol GreenCheckmark)) -ForegroundColor Green
+                $Uploaded = $true
+            }
+        
+            $appObject | Add-Member -MemberType NoteProperty -Name Uploaded -Value $Uploaded    
+            $apps += $appObject
+        }#end file loop
+    
+        $stopwatch.Stop()
+    
+        Write-Host ("{0}" -f (Get-Symbol -Symbol Hourglass)) -NoNewline
+        Write-Host (" Uploaded {0} file for application in [" -f $Application.ArchiveFile.count) -ForegroundColor Green -NoNewline
+        Write-Host ("{0} seconds" -f [math]::Round($stopwatch.Elapsed.TotalSeconds,0)) -ForegroundColor Cyan -NoNewline
+        Write-Host ("]") -ForegroundColor Green
+        
+        $stopwatch.Reset()
+        $stopwatch.Restart()
+    }#end app loop
+    #Export record
+    $apps | Export-Clixml -Path "$ResourcePath\$($ToolkitSettings.Settings.appUploadedFilePath)" -Force
+    
+    #Blob Cleanup
+    ## ================================
+    Write-Host ("Checking for older versions of applications in blob...") -ForegroundColor Cyan
+    $UnusedAppplications = Get-AzStorageBlob -Container $ToolkitSettings.AzureResources.storageContainer -Context $Ctx | Where {($_.Name -like 'application_*') -and ($_.Name -notin $apps.ArchiveFile)}
+    If($BlobCleanup -and ($UnusedAppplications.count -gt 0) ){
+        Write-Host ("    |---cleaning up {0} application(s) in blob..." -f $UnusedAppplications.count) -NoNewline
+        try{
+            $UnusedAppplications | Remove-AzStorageBlob -Force
+            Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
+        }Catch{
+            Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red  
         }
-    
-        $appObject | Add-Member -MemberType NoteProperty -Name Uploaded -Value $Uploaded    
-        $apps += $appObject
-    }#end file loop
-
-    $stopwatch.Stop()
-
-    Write-Host ("{0}" -f (Get-Symbol -Symbol Hourglass)) -NoNewline
-    Write-Host (" Uploaded {0} file for application in [" -f $Application.ArchiveFile.count) -ForegroundColor Green -NoNewline
-    Write-Host ("{0} seconds" -f [math]::Round($stopwatch.Elapsed.TotalSeconds,0)) -ForegroundColor Cyan -NoNewline
-    Write-Host ("]") -ForegroundColor Green
-    
-    $stopwatch.Reset()
-    $stopwatch.Restart()
-}#end app loop
-#Export record
-$apps | Export-Clixml -Path "$ResourcePath\$($ToolkitSettings.Settings.appUploadedFilePath)" -Force
-
-
-
-#Blob Cleanup
-## ================================
-Write-Host ("Checking for older versions of applications in blob...") -ForegroundColor Cyan
-$UnusedAppplications = Get-AzStorageBlob -Container $ToolkitSettings.AzureResources.storageContainer -Context $Ctx | Where {($_.Name -like 'application_*') -and ($_.Name -notin $apps.ArchiveFile)}
-If($BlobCleanup -and ($UnusedAppplications.count -gt 0) ){
-    Write-Host ("    |---cleaning up {0} application(s) in blob..." -f $UnusedAppplications.count) -NoNewline
-    try{
-        $UnusedAppplications | Remove-AzStorageBlob -Force
-        Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
-    }Catch{
-        Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red  
+    }Else{
+        Write-Host ("    |---No applications were removed from blob...") -ForegroundColor Yellow
     }
-}Else{
-    Write-Host ("    |---No applications were removed from blob...") -ForegroundColor Yellow
 }
 
 

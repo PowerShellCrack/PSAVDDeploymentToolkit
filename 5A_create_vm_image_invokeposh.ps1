@@ -23,7 +23,7 @@
     Specify a setting configuration file. Defaults to settings.json
 
     .PARAMETER Sequence
-    Specify a image configuration file (aib.json). Defaults to Win11AvdGFEImage
+    Specify a image configuration file (sequence.json). Defaults to Win11AvdGFEImage
 
     .PARAMETER VMName
     Specify the VM name to capture
@@ -130,7 +130,7 @@ Start-transcript "$ResourcePath\Logs\$LogfileName" -ErrorAction Stop
 ## GET SETTINGS
 ## ================================
 $ToolkitSettings = Get-Content "$ResourcePath\Control\$ControlSettings" -Raw | ConvertFrom-Json
-$ControlCustomizationData = Get-Content "$ControlPath\$Sequence\aib.json" | ConvertFrom-Json
+$ControlCustomizationData = Get-Content "$ControlPath\$Sequence\sequence.json" | ConvertFrom-Json
 
 
 ##======================
