@@ -21,7 +21,7 @@
     10. Create storage account and set permissions (if use -AibSupport)
     11. Create container with public access
     10. Generate Sastoken and store in config
-    
+
     TIP: this script can be ran more than once and will check each configuration
 
     TODO:
@@ -46,7 +46,7 @@
 
     .PARAMETER ForceNewSasToken
     Forces a new sas token for blob storage even if date is still valid
-    
+
     .PARAMETER SasTokenExpireDays
     Set the number of days the SasToek will expire. Defaults to 5
 
@@ -65,7 +65,7 @@
     .EXAMPLE
     PS .\A1_prep_azureenv.ps1
 
-    RESULT: Run default setting 
+    RESULT: Run default setting
 
    .EXAMPLE
     PS .\A1_prep_azureenv.ps1 -ControlSettings setting.gov.json
@@ -88,7 +88,7 @@
 Param(
     [Parameter(Mandatory = $false)]
     [string]$ResourcePath,
-    
+
     [Parameter(Mandatory = $false)]
     [ArgumentCompleter( {
         param ( $commandName,
@@ -112,7 +112,7 @@ Param(
 
     [switch]$PromptAdminPassword,
 
-    [switch]$AibSupport, 
+    [switch]$AibSupport,
 
     [int]$SasTokenExpireDays = 5,
 
@@ -207,7 +207,7 @@ Foreach($Module in $AzModuleList){
             Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message)
             exit
         }
-    } 
+    }
 }
 
 #=======================================================
@@ -278,7 +278,7 @@ If($AibSupport){
             If($AIBProvider.RegistrationState -eq 'NotRegistered'){
                 Write-Host ("    |---Registering {0}..." -f $AIBProvider.ProviderNamespace) -NoNewline
                 Try{
-                    
+
                     Register-AzResourceProvider -ProviderNamespace $AIBProvider.ProviderNamespace | Out-Null
                     Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
                 }
@@ -286,12 +286,12 @@ If($AibSupport){
                     Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Black -BackgroundColor Red
                     Stop-Transcript;Break
                 }
-        
+
             }Else{
                 Write-Host ("    |---{0} {1} Already registered" -f (Get-Symbol -Symbol GreenCheckmark),$AIBProvider.ProviderNamespace) -ForegroundColor Green
             }
         }
-        
+
     }
     Else{
         #Write-Host ("Azure resource provider [Microsoft.VirtualMachineImages] is not available, unable to continue!") -ForegroundColor Red
@@ -473,11 +473,11 @@ If([Boolean]::Parse($ToolkitSettings.Settings.recordToLaw)){
 
     $WorkspaceIDKeyVaultName = (($ToolkitSettings.LogAnalytics.name -replace '\W+').ToLower() + 'Id')
     If($ToolkitSettings.LogAnalytics.workspaceId -eq '[KeyVault]' -and !($null = Get-AzKeyVaultSecret -VaultName $ToolkitSettings.AzureResources.keyVault -Name $WorkspaceIDKeyVaultName -ErrorAction SilentlyContinue)){
-        
+
         $secretvalue = ConvertTo-SecureString $Workspace.CustomerId -AsPlainText -Force
         Try{
             Write-Host ("    |---Storing to Keyvault workplace id secret [{0}]..." -f $WorkspaceIDKeyVaultName) -ForegroundColor White -NoNewline:$NoNewLine
-            
+
             $null = Set-AzKeyVaultSecret -VaultName $ToolkitSettings.AzureResources.keyVault `
                                         -Name $WorkspaceIDKeyVaultName `
                                         -SecretValue $secretvalue `
@@ -496,7 +496,7 @@ If([Boolean]::Parse($ToolkitSettings.Settings.recordToLaw)){
         $secretvalue = ConvertTo-SecureString $PrimaryKey -AsPlainText -Force
         Try{
             Write-Host ("    |---Storing to Keyvault workplace id secret [{0}]..." -f $WorkspaceKey1Name) -ForegroundColor White -NoNewline:$NoNewLine
-            
+
             $null = Set-AzKeyVaultSecret -VaultName $ToolkitSettings.AzureResources.keyVault `
                                         -Name $WorkspaceKey1Name `
                                         -SecretValue $secretvalue `
@@ -515,7 +515,7 @@ If([Boolean]::Parse($ToolkitSettings.Settings.recordToLaw)){
         $secretvalue = ConvertTo-SecureString $SecondaryKey -AsPlainText -Force
         Try{
             Write-Host ("    |---Storing to Keyvault workplace id secret [{0}]..." -f $WorkspaceKey2Name) -ForegroundColor White -NoNewline:$NoNewLine
-            
+
             $null = Set-AzKeyVaultSecret -VaultName $ToolkitSettings.AzureResources.keyVault `
                                         -Name $WorkspaceKey2Name `
                                         -SecretValue $secretvalue `
@@ -569,7 +569,7 @@ If($AibSupport){
     # Create a unique role name to avoid clashes in the same Azure Active Directory domain
     $imageRoleDefName="Azure Image Builder Image Def (" + $IdentityGuid + ")"
     $roleDefinitionPath = Join-Path $env:TEMP -ChildPath 'aibRoleImageCreation.json'
-    
+
     If([uri]::IsWellFormedUriString($ToolkitSettings.ManagedIdentity.roleDefinitionTemplate, 'Absolute') -and ([uri]$ToolkitSettings.ManagedIdentity.roleDefinitionTemplate).Scheme -in 'http', 'https')
     {
         Invoke-WebRequest -Uri $roleDefinitionUri -Outfile $roleDefinitionPath -UseBasicParsing
@@ -583,7 +583,7 @@ If($AibSupport){
         Copy-Item $ToolkitSettings.ManagedIdentity.roleDefinitionTemplate -Destination $roleDefinitionPath -Force
     }
     Else{
-        Write-Host ("{0}. Missing path from control settings" -f (Get-Symbol -Symbol RedX)) -ForegroundColor Red  
+        Write-Host ("{0}. Missing path from control settings" -f (Get-Symbol -Symbol RedX)) -ForegroundColor Red
         Break
     }
 
@@ -659,13 +659,13 @@ If(-Not($StorageObject = Get-AzStorageAccount -Name $ToolkitSettings.AzureResour
             -Location $ToolkitSettings.TenantEnvironment.location `
             -SkuName Standard_GRS #`
             -AllowBlobPublicAccess $false
-        
+
         <#
         Set-AzStorageAccount -Name $ToolkitSettings.AzureResources.storageAccount `
             -ResourceGroupName $ToolkitSettings.AzureResources.storageResourceGroup `
             -AllowBlobPublicAccess $True
 
-           #> 
+           #>
         Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
     }
     Catch{
@@ -835,7 +835,7 @@ If(-Not($WritePolicy = Get-AzStorageContainerStoredAccessPolicy -Container $Cont
             Write-Host ("]") -NoNewline
         }ElseIf($WritePolicy.expiryTime -gt $NewExpiryTime){
             Write-Host ("    |---Updating Azure Storage Container Access policy [{0}]..." -f "ReadWritePolicy01") -ForegroundColor White -NoNewline:$NoNewLine
-            $WritePolicy = Set-AzStorageContainerStoredAccessPolicy -Container $Container -Policy $storagePolicyName -Permission rwdl -StartTime (Get-Date) -ExpiryTime $NewExpiryTime -Context $storageContext 
+            $WritePolicy = Set-AzStorageContainerStoredAccessPolicy -Container $Container -Policy $storagePolicyName -Permission rwdl -StartTime (Get-Date) -ExpiryTime $NewExpiryTime -Context $storageContext
             Write-Host ("{0} " -f (Get-Symbol -Symbol GreenCheckmark)) -NoNewline
             Write-Host ("Expires on [") -NoNewline
             Write-Host ("{0}" -f $NewExpiryTime) -ForegroundColor Cyan -NoNewline
@@ -870,9 +870,9 @@ If( ($ToolkitSettings.AzureResources.containerSasToken.Length -gt 0) -and !$Forc
         $ExpiryDate = [System.Text.RegularExpressions.Regex]::Match($ToolkitSettings.AzureResources.containerSasToken, 'sv=(?<Created>.*)&se=(?<Expiry>.*)&sr=(?<token>.*)').Groups['Expiry'].value.replace('%3A',':')
         $sasTokenValue = $ToolkitSettings.AzureResources.containerSasToken
     }
-    
+
     If($ExpiryDate.Length -gt 0){
-        
+
         If((Get-Date) -gt $ExpiryDate){
             Write-Host ("expired on [") -NoNewline
             Write-Host ("{0}" -f $ExpiryDate.ToString()) -ForegroundColor Yellow -NoNewline
@@ -889,22 +889,22 @@ If( ($ToolkitSettings.AzureResources.containerSasToken.Length -gt 0) -and !$Forc
     }Else{
         Write-Host ("{0} Invalid. generating new SASToken..." -f (Get-Symbol -Symbol WarningSign)) -ForegroundColor Yellow
     }
-    
+
 }Else{
     Write-Host ("{0} skipped check" -f (Get-Symbol -Symbol Information)) -ForegroundColor Yellow
 }
 
 
 If($GenerateNewSasToken -or $ForceNewSasToken){
-    #$UserStorageContext = New-AzStorageContext -StorageAccountName $ToolkitSettings.AzureResources.storageAccount -UseConnectedAccount    
+    #$UserStorageContext = New-AzStorageContext -StorageAccountName $ToolkitSettings.AzureResources.storageAccount -UseConnectedAccount
     Write-Host ("    |---Generating new SasToken for [{0}]..." -f $ContainerObject.Name) -ForegroundColor White -NoNewline:$NoNewLine
     Try{
         #remove any keys associated with storarge account
         Revoke-AzStorageAccountUserDelegationKeys -ResourceGroupName $ToolkitSettings.AzureResources.storageResourceGroup -StorageAccountName $ToolkitSettings.AzureResources.storageAccount
         #create new key
-        $sasToken = (New-AzStorageContainerSASToken -Name $ContainerObject.Name -Permission "racwdl" -ExpiryTime $midnight.AddDays($SasTokenExpireDays) -Context $storageContext) -replace '^\?','' 
+        $sasToken = (New-AzStorageContainerSASToken -Name $ContainerObject.Name -Permission "racwdl" -ExpiryTime $midnight.AddDays($SasTokenExpireDays) -Context $storageContext) -replace '^\?',''
         #$sasToken = (New-AzStorageContainerSASToken -Name $ContainerObject.Name -Policy $storagePolicyName -Context $storageContext).substring(1)
-        #$ToolkitSettings.AzureResources.containerSasToken = $sasToken -replace '^\?',''       
+        #$ToolkitSettings.AzureResources.containerSasToken = $sasToken -replace '^\?',''
         Write-Host ("Done. SasToken expires [") -ForegroundColor Green -NoNewline
         Write-Host ("{0}" -f $midnight.AddDays($SasTokenExpireDays)) -ForegroundColor Cyan -NoNewline
         Write-Host ("]") -ForegroundColor Green
@@ -930,7 +930,7 @@ If($GenerateNewSasToken -or $ForceNewSasToken){
             #Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -BackgroundColor Red
             #Stop-Transcript;Break
             Send-AIBMessage -Message ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -Severity 3 -BreakonError
-        }   
+        }
     }Else{
         Try{
             Write-Host ("    |---Storing SASToken in config [{0}]..." -f ("$ResourcePath\Control\$ControlSettings")) -ForegroundColor White -NoNewline:$NoNewLine
@@ -940,7 +940,7 @@ If($GenerateNewSasToken -or $ForceNewSasToken){
             #Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -BackgroundColor Red
             #Stop-Transcript;Break
             Send-AIBMessage -Message ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -Severity 3 -BreakonError
-        }    
+        }
     }
 }
 

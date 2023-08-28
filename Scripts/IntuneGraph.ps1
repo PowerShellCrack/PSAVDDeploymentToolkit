@@ -227,7 +227,7 @@ function New-IntuneApplicationPackage {
     $AppSourcePath = (($PWD.ProviderPath, $PSScriptRoot)[[bool]$PSScriptRoot] + "\IntuneApps")
     $Appname = "Install-BGInfo"
     [string[]] $JSONFileList = $AppSourcePath+"\"+$Appname+"\groups.json"
-    $AppManifest = (Get-Content ($AppSourcePath+"\"+$Appname+"\config.json")) | ConvertFrom-Json   
+    $AppManifest = (Get-Content ($AppSourcePath+"\"+$Appname+"\config.json")) | ConvertFrom-Json
     #>
     #>
     [cmdletbinding()]
@@ -641,9 +641,9 @@ function Remove-NewStoreAppsAADGroupAssignmentList {
 
     foreach ($JSONFile in $JSONFileList) {
         $appAssignmentJSON = Get-JSONContent -JSONFile $JSONFile
-        
+
         If($appAssignmentJSON."@odata.type" -eq  "#microsoft.graph.officeSuiteApp" -or $appAssignmentJSON."@odata.type" -eq  "#microsoft.graph.windowsMicrosoftEdgeApp" ){
-            
+
             if (Test-IntuneApplication -DisplayName $appAssignmentJSON.displayName) {
                 Write-Host '  Removing:' $appAssignmentJSON.DisplayName -f Red
 
@@ -673,12 +673,12 @@ function Remove-NewStoreAppsAADGroupAssignmentList {
 
                 if (Test-IntuneApplication -DisplayName $app.packageName) {
                     Write-Host '  Removing:' $app.packageName -f Red
-        
+
                     $appConfiguration = Get-IntuneApplication -DisplayName $app.packageName
-        
+
                     $apiVersion = 'beta'
                     $resource = "deviceAppManagement/mobileApps/$($appConfiguration.Id)"
-        
+
                     try {
                         $uri = "$($script:settings.graphURL)/$apiVersion/$resource"
                         Invoke-MgGraphRequest -Method Delete -Uri $uri
@@ -692,7 +692,7 @@ function Remove-NewStoreAppsAADGroupAssignmentList {
                 }
             }
         }
-        
+
     }
 }
 
@@ -749,7 +749,7 @@ function Set-IntuneApplication {
 
     #New-IntuneApplicationPackage -AppType $AppManifest.appType -RuleType $AppManifest.RuleType -ReturnCodeType $AppManifest.returnCodeType -InstallExperience $AppManifest.installExperience -Logo $AppManifest.logoFile -AADGroupName $AADGroupName
     # Create the needed groups
-  #  foreach($group in @($AppManifest.requiredgroup, $AppManifest.availablegroup, $AppManifest.uninstallGroup)) {  
+  #  foreach($group in @($AppManifest.requiredgroup, $AppManifest.availablegroup, $AppManifest.uninstallGroup)) {
    #     if(-Not (Get-MgGroup -Filter "DisplayName eq '$group'")){
     #       # $groupObject = Get-CSMGroup -Id $group
      #       $null = New-IntuneAppGroup -AppManifest $AppManifest -group $group
@@ -1015,10 +1015,10 @@ function Set-IntuneApplicationAssignment
             $resource = "deviceAppManagement/mobileApps/$ApplicationID/assignments"
 
             $jsonBody = $Win32AppAssignmentBody | ConvertTo-Json -Depth 3
-            
+
             $uri = "$($script:settings.graphURL)/$apiVersion/$resource"
             $null = Invoke-MgGraphRequest -Method Post -Uri $uri -Body $jsonBody -ContentType 'application/json'
-        } 
+        }
         catch [System.Exception]{
             Write-Warning -Message "An error occurred while creating a $AppType app assignment: $($TargetFilePath). Error message: $($_.Exception.Message)"
         }
@@ -1137,10 +1137,10 @@ function Set-IntuneOfficeSuiteAppAssignment {
                 }
             #}
         #)
-        
+
     } | ConvertTo-Json -Depth 5
 
-    try {       
+    try {
         $uri = "$($script:settings.graphURL)/$apiVersion/$resource"
         Invoke-MgGraphRequest -Method Post -Uri $uri -Body $body -ContentType 'application/json'
     }

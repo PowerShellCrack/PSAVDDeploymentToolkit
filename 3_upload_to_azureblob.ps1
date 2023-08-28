@@ -39,7 +39,7 @@
     .EXAMPLE
     PS .\A3_upload_to_azureblob.ps1
 
-    RESULT: Run default setting 
+    RESULT: Run default setting
 
    .EXAMPLE
     PS .\A3_upload_to_azureblob.ps1 -ControlSettings setting.gov.json
@@ -60,7 +60,7 @@
 Param(
     [Parameter(Mandatory = $false)]
     [string]$ResourcePath,
-    
+
     [Parameter(Mandatory = $false)]
     [ArgumentCompleter( {
         param ( $commandName,
@@ -153,7 +153,7 @@ $subscriptionID=$currentAzContext.Subscription.Id
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true" | Out-Null
 
 #determine where to get sastoken
-If($ToolkitSettings.AzureResources.containerSasToken -eq '[KeyVault]'){ 
+If($ToolkitSettings.AzureResources.containerSasToken -eq '[KeyVault]'){
 
     # use sastoken stored in keyvault
     Try{
@@ -165,7 +165,7 @@ If($ToolkitSettings.AzureResources.containerSasToken -eq '[KeyVault]'){
     }
 }Else{
     # use sastoken stored in config
-    $SasToken = $ToolkitSettings.AzureResources.containerSasToken 
+    $SasToken = $ToolkitSettings.AzureResources.containerSasToken
 }
 
 #get storage context
@@ -194,7 +194,7 @@ If(Test-Path "$ResourcePath\$($ToolkitSettings.Settings.appDownloadedFilePath)" 
     $ArchivedApplicationsList = Import-Clixml "$ResourcePath\$($ToolkitSettings.Settings.appDownloadedFilePath)"
     $ArchivedApplications = $ArchivedApplicationsList | Where Archived -eq $true
 }Else{
-    Write-Host "Unable to process applications, missing {0}. `nPlease run [A2_download_applications.ps1] prior to this step" -ForegroundColor Red  
+    Write-Host "Unable to process applications, missing {0}. `nPlease run [A2_download_applications.ps1] prior to this step" -ForegroundColor Red
     Break
 }
 
@@ -206,35 +206,35 @@ If(!$SkipAppUploads){
     Foreach($Application in $ArchivedApplications){
         $i++
         Write-Host ("`n[{0}/{1}] Uploaded application [{2} (v{3})]..." -f $i,$ArchivedApplications.count,$Application.ProductName,$Application.version.replace('[version]','') )
-    
+
         $f=0
         #TEST $Filename = $Application.ArchiveFile | Select -first 1
         Foreach($Filename in $Application.ArchiveFile){
             $f++
-            
-            $appObject = New-Object pscustomobject    
+
+            $appObject = New-Object pscustomobject
             $appObject | Add-Member -MemberType NoteProperty -Name Id -Value $Application.Id
             $appObject | Add-Member -MemberType NoteProperty -Name ProductName -Value $Application.ProductName
             $appObject | Add-Member -MemberType NoteProperty -Name Version -Value $Application.Version
             $appObject | Add-Member -MemberType NoteProperty -Name DateUploaded -Value (Get-Date)
             $appObject | Add-Member -MemberType NoteProperty -Name UploadSourcePath -Value ($BlobUrl + '/' + $Filename)
             $appObject | Add-Member -MemberType NoteProperty -Name ArchiveFile -Value $Filename
-            
+
             Write-Host ("    |---[{0}/{1}] file uploading [" -f $f,$Application.ArchiveFile.count) -NoNewline
             Write-Host ("{0}" -f $Filename) -ForegroundColor Cyan -NoNewline
             Write-Host ("]...") -NoNewline:$NoNewLine
-            
+
             $BlobFileExists = $false
             If(Get-AzStorageBlob -Container $ToolkitSettings.AzureResources.storageContainer -Context $Ctx -Prefix $Filename -ErrorAction SilentlyContinue){
                 $BlobFileExists = $True
             }
-    
+
             If($BlobFileExists -ne $True){
-                try{         
+                try{
                     #Invoke-RestCopyToBlob -SourcePath $Application.ExportedPath @RestCopyParams
                     $Results = Invoke-AzCopyToBlob -Source ($Application.ExportedPath + '\'+ $Filename) @BlobCopyParams -ShowProgress
                     $Uploaded = $true
-                    Write-Host ("{0} {1}" -f (Get-Symbol -Symbol GreenCheckmark),($Results -join '')) -ForegroundColor Green                
+                    Write-Host ("{0} {1}" -f (Get-Symbol -Symbol GreenCheckmark),($Results -join '')) -ForegroundColor Green
                 }Catch{
                     $Uploaded = $false
                     Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red
@@ -244,24 +244,24 @@ If(!$SkipAppUploads){
                 Write-Host ("{0} already exists" -f (Get-Symbol -Symbol GreenCheckmark)) -ForegroundColor Green
                 $Uploaded = $true
             }
-        
-            $appObject | Add-Member -MemberType NoteProperty -Name Uploaded -Value $Uploaded    
+
+            $appObject | Add-Member -MemberType NoteProperty -Name Uploaded -Value $Uploaded
             $apps += $appObject
         }#end file loop
-    
+
         $stopwatch.Stop()
-    
+
         Write-Host ("{0}" -f (Get-Symbol -Symbol Hourglass)) -NoNewline
         Write-Host (" Uploaded {0} file for application in [" -f $Application.ArchiveFile.count) -ForegroundColor Green -NoNewline
         Write-Host ("{0} seconds" -f [math]::Round($stopwatch.Elapsed.TotalSeconds,0)) -ForegroundColor Cyan -NoNewline
         Write-Host ("]") -ForegroundColor Green
-        
+
         $stopwatch.Reset()
         $stopwatch.Restart()
     }#end app loop
     #Export record
     $apps | Export-Clixml -Path "$ResourcePath\$($ToolkitSettings.Settings.appUploadedFilePath)" -Force
-    
+
     #Blob Cleanup
     ## ================================
     Write-Host ("Checking for older versions of applications in blob...") -ForegroundColor Cyan
@@ -272,7 +272,7 @@ If(!$SkipAppUploads){
             $UnusedAppplications | Remove-AzStorageBlob -Force
             Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
         }Catch{
-            Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red  
+            Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red
         }
     }Else{
         Write-Host ("    |---No applications were removed from blob...") -ForegroundColor Yellow
@@ -295,14 +295,14 @@ Foreach($Folder in $AVDToolkitFolders){
     $i++
     $appObject = New-Object pscustomobject
     Write-Host ("`n[{0}/{1}] Uploading folder [{2}]..." -f $i,$AVDToolkitFolders.count,$Folder )
-    
+
     $ZippedFilePath = ($ApplicationsPath + '\toolkitfolders_' + $Folder + '.zip')
     Write-Host ("    |---Archived folder [{0}]..." -f $ZippedFilePath) -NoNewline:$NoNewLine
     try{
         Compress-Archive -Path ($ResourcePath + '\' + $Folder) -DestinationPath $ZippedFilePath -Force | Out-Null
         Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
     }Catch{
-        Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red  
+        Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red
     }
 
     Write-Host ("    |---Uploading folder to [{0}]..." -f $BlobUrl) -NoNewline:$NoNewLine
@@ -313,7 +313,7 @@ Foreach($Folder in $AVDToolkitFolders){
         Write-Host ("{0} {1}" -f (Get-Symbol -Symbol GreenCheckmark),($Results -join '')) -ForegroundColor Green
     }Catch{
         $Uploaded = $false
-        Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red  
+        Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red
     }
     $foldersObject | Add-Member -MemberType NoteProperty -Name Uploaded -Value $Uploaded
     $foldersObject | Add-Member -MemberType NoteProperty -Name Folder -Value $ZippedFilePath
@@ -331,7 +331,7 @@ try{
     $Results = Get-ChildItem -Path $ControlPath -Filter '*.xml' | Select -ExpandProperty FullName | Invoke-AzCopyToBlob @BlobCopyParams -ShowProgress
     Write-Host ("{0} {1}" -f (Get-Symbol -Symbol GreenCheckmark),($Results -join '')) -ForegroundColor Green
 }Catch{
-    Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red  
+    Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red
 }
 
 Write-Host ("    |---Uploading application data files...") -NoNewline:$NoNewLine
@@ -340,7 +340,7 @@ try{
     $Results = Get-ChildItem -Path $ApplicationsPath -Filter '*.xml' | Select -ExpandProperty FullName | Invoke-AzCopyToBlob @BlobCopyParams -ShowProgress
     Write-Host ("{0} {1}" -f (Get-Symbol -Symbol GreenCheckmark),($Results -join '')) -ForegroundColor Green
 }Catch{
-    Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red  
+    Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red
 }
 Write-Host ("    |---Uploading application.json...") -NoNewline:$NoNewLine
 try{
@@ -348,7 +348,7 @@ try{
     $Results = Get-ChildItem -Path (Resolve-Path $($ToolkitSettings.Settings.appListFilePath)) | Select -ExpandProperty FullName | Invoke-AzCopyToBlob @BlobCopyParams -ShowProgress
     Write-Host ("{0} {1}" -f (Get-Symbol -Symbol GreenCheckmark),($Results -join '')) -ForegroundColor Green
 }Catch{
-    Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red  
+    Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red
 }
 Write-Host ("    |---Uploading sequencer...") -NoNewline:$NoNewLine
 try{
@@ -356,7 +356,7 @@ try{
     $Results = Invoke-AzCopyToBlob -Source "$ResourcePath\$($ToolkitSettings.Settings.sequenceRunnerScriptFile)" @BlobCopyParams -ShowProgress
     Write-Host ("{0} {1}" -f (Get-Symbol -Symbol GreenCheckmark),($Results -join '')) -ForegroundColor Green
 }Catch{
-    Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red  
+    Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red
 }
 
 $global:ProgressPreference = $prevProgressPreference
@@ -383,7 +383,7 @@ $AzCopyParams = @{
 iF($TestRun){
     $AzCopyParams += @{
         Test = $true
-    }    
+    }
 }
 
 Write-Host ("STARTING SYNC PROCESS...")

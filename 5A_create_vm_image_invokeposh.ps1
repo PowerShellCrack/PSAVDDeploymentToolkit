@@ -34,7 +34,7 @@
     .EXAMPLE
     PS .\A5_create_vm_image.ps1
 
-    RESULT: Run default setting 
+    RESULT: Run default setting
 
    .EXAMPLE
     PS .\A5_create_vm_image.ps1 -ControlSettings setting.gov.json
@@ -184,7 +184,7 @@ if($null = Get-AzGallery -ResourceGroupName $ToolkitSettings.AzureResources.imag
 {
     Write-Host ("{0}" -f (Get-Symbol -Symbol GreenCheckmark))
 }Else{
-    Write-Host ("{0}. Image Gallery [{1}] in Resource Group [{2}] not found" -f (Get-Symbol -Symbol RedX), $ToolkitSettings.AzureResources.imageComputeGallery, $ToolkitSettings.AzureResources.imageResourceGroup) -ForegroundColor Red 
+    Write-Host ("{0}. Image Gallery [{1}] in Resource Group [{2}] not found" -f (Get-Symbol -Symbol RedX), $ToolkitSettings.AzureResources.imageComputeGallery, $ToolkitSettings.AzureResources.imageResourceGroup) -ForegroundColor Red
     break
 }
 
@@ -220,11 +220,11 @@ Set-Content -Path $ScriptDestinationPath -Value $remoteCommand -Force | Out-Null
 Write-Host ("    |---Invoking sysprep script on VM [{0}]..." -f $targetVMName)
 try{
     $Global:Result = Invoke-AzVMRunCommand -ResourceGroupName $ToolkitSettings.AzureResources.computeResourceGroup -VMName $targetVMName -CommandId 'RunPowerShellScript' -ScriptPath $ScriptDestinationPath
-    
+
     #collect output msg and display appropiately
     $StdOut = $Global:Result.Value.Message[0]
     $StdErr = $Global:Result.Value.Message[1]
-    if ([bool]$StdErr) { 
+    if ([bool]$StdErr) {
         Write-Host ("{0} {1}" -f (Get-Symbol -Symbol RedX),$StdErr) -ForegroundColor Red
         Continue
     }Else{
@@ -237,7 +237,7 @@ Catch{
 finally {
     #Invoke-AzVMRunCommand -ResourceGroupName $ToolkitSettings.AzureResources.computeResourceGroup -VMName $targetVMName -CommandId 'RemoveRunCommandWindowsExtension'
     Remove-Item $ScriptDestinationPath -Force | Out-Null
-} 
+}
 
 #VM should be shutdown already but no deallocated
 #Sleep for 5 seconds between checking whether VM is shutdown. Output a dot to screen to show script is still running
@@ -338,11 +338,11 @@ If($CleanUpVMOnCaptureSuccess -and $ImageReady){
     Write-Host ("`nCleaning up resources tied to Azure Virtual Machine [{0}]..." -f $targetVMName) -ForegroundColor Cyan
     if ($targetVM) {
         $RGName=$targetVM.ResourceGroupName
-        
+
         #Build tag used to indeinfy all resources that need to be deleted
         $tags = @{"VMName"=$targetVMName; "Delete Ready"="Yes"}
 
-        Write-Host ("    |---Marking Disks for deletion...") -ForegroundColor White -NoNewline       
+        Write-Host ("    |---Marking Disks for deletion...") -ForegroundColor White -NoNewline
         $osDiskName = $targetVM.StorageProfile.OSDisk.Name
         $datadisks = $targetVM.StorageProfile.DataDisks
         $ResourceID = (Get-Azdisk -Name $osDiskName).id

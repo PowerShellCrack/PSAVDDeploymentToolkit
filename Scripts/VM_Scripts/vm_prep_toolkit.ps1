@@ -175,42 +175,6 @@ $BlobAzCopyParams = @{
     SourceUrl = $BlobUrl
     AzCopyPath="$ToolsPath\azcopy.exe"
 }
-## ================================
-## IMPORT OFFLINE MODULES
-## ================================
-Install-PackageProvider NuGet -Force
-
-#If(-NOT(Get-PackageProvider -Name Nuget)){Install-PackageProvider -Name Nuget -ForceBootstrap -RequiredVersion '2.8.5.201' -Force | Out-Null}
-#Register-PSRepository -Name Local -SourceLocation "$ToolsPath\Modules" -InstallationPolicy Trusted
-
-$OfflineModules = Get-ChildItem $ToolsPath -Recurse -Filter *.nupkg
-
-#TEST $Module = $ToolkitSettings.Settings.offlineSupportingModules[0]
-#TEST $Module = $ToolkitSettings.Settings.offlineSupportingModules[2]
-$i=0
-Foreach($Module in $ToolkitSettings.Settings.offlineSupportingModules){
-    Write-Host ("`n[{0}/{1}] Processing module [{2}]..." -f $i,$ToolkitSettings.Settings.offlineSupportingModules.count,$Module )
-    If($OfflineModule = $OfflineModules | Where Name -like "$Module*"){
-
-        $Name = $OfflineModule.BaseName.split('.')[0].Trim()
-        $Version = ($OfflineModule.BaseName -replace '^\w+.').Trim()
-        $ModuleDestination = "$env:ProgramFiles\WindowsPowerShell\Modules\$Name\$Version"
-        Write-Host ("    |---Importing module [{0} v{1}] to [{2}]..." -f $Name,$Version,$ModuleDestination) -NoNewline:$NoNewLine
-        try{
-            Rename-Item $OfflineModule.FullName -NewName ($OfflineModule.BaseName + '.zip') -Force -ErrorAction SilentlyContinue
-            New-Item $ModuleDestination -ItemType Directory -ErrorAction SilentlyContinue -Force | Out-Null
-            Expand-Archive -Path ($OfflineModule.FullName -replace '\.nupkg$','.zip') -DestinationPath $ModuleDestination -ErrorAction SilentlyContinue
-            Install-Module $Name -Force
-            Write-Host ("Done") -ForegroundColor Green
-        }Catch{
-            Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
-        }
-    }Else{
-        Write-Host ("    |---no offline modules exists in folder [{0}]" -f $ToolsPath) -ForegroundColor Yellow
-    }
-    $i++
-
-}
 
 ## ================================
 ## DOWNLOAD APPS
@@ -260,7 +224,7 @@ Foreach($SequenceItem in $FilteredCustomizations){
                     {
                         $a++
                         If( $AppUploadItem.Uploaded -eq $true){
-                            Write-Host ("    |---[{0}/{1}] Downloading [{2}]..." -f $a,$AppUploadItem.count,$AppUploadItem.ArchiveFile) -NoNewline:$NoNewLine
+                            Write-Host ("    |---[{0}/{1}] Downloading [{2}]..." -f $a,$AppUploadList.count,$AppUploadItem.ArchiveFile) -NoNewline:$NoNewLine
                             try{
                                 Invoke-AzCopyFromBlob -BlobFile $AppUploadItem.ArchiveFile -DestinatioPath $ApplicationsPath @BlobAzCopyParams -Force
                                 #Invoke-RestCopyFromBlob -BlobFile $AppUploadItem.ArchiveFile -Destination "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" @BlobRestParams
@@ -271,7 +235,7 @@ Foreach($SequenceItem in $FilteredCustomizations){
                                 $ExtractFile = $false
                             }
                         }Else{
-                            Write-Host ("    |---[{0}/{1}] file not found [{2}]; unable to download" -f $a,$AppUploadItem.count,$AppUploadItem.ArchiveFile) -ForegroundColor Yellow
+                            Write-Host ("    |---[{0}/{1}] file not found [{2}]; unable to download" -f $a,$AppUploadList.count,$AppUploadItem.ArchiveFile) -ForegroundColor Yellow
                             $ExtractFile = $false
                         }
                     }#end loop of items
@@ -280,11 +244,11 @@ Foreach($SequenceItem in $FilteredCustomizations){
                     {
                         #get one archive file (either single or first file of parts)
                         If($AppUploadList.count -gt 1){
-                            $AppUploadItem = $AppUploadList
-                            $ExtractParts = $false
-                        }Else{
                             $AppUploadItem = $AppUploadList | Where ArchiveFile -match '001$'
                             $ExtractParts = $true
+                        }Else{
+                            $AppUploadItem = $AppUploadList
+                            $ExtractParts = $false
                         }
 
                         If( ($AppUploadItem.Version -ne '[version]') -and ($AppUploadItem.Version -ne 'latest') ){

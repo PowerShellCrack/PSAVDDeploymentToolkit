@@ -65,7 +65,7 @@ Function Invoke-BlobContainerTransfer{
         $StorageAccountKey,
 
         [switch]$UseSAS,
-        
+
         [Parameter(Mandatory)]
         [string]$SasToken,
 
@@ -75,7 +75,7 @@ Function Invoke-BlobContainerTransfer{
     $FileName = Split-Path $FilePath -Leaf
 
     Write-Host ("Copying file [{0}] to [{1}]..." -f $FileName,$BlobUrl) -NoNewline
-    
+
     If($UseSAS){
         $Arguments= (
             'copy',
@@ -83,7 +83,7 @@ Function Invoke-BlobContainerTransfer{
             "https://$BlobUrl/$Container/$FileName`?$SasToken"
         )
 
-        $Result = Start-Process $AzCopyPath -ArgumentList $Arguments -PassThru -NoNewWindow -Wait 
+        $Result = Start-Process $AzCopyPath -ArgumentList $Arguments -PassThru -NoNewWindow -Wait
         #get results and see if they are valid
         If($Result.ExitCode -eq 0){
             Write-Host "Success" -ForegroundColor Green
@@ -132,14 +132,14 @@ Function Invoke-AzCopyToBlob {
         [String] $ProgressMsg,
         [string[]] $ValidExitCodes = @(0,1),
         [switch] $Force
-        
+
     )
     Begin{
         $env:SEE_MASK_NOZONECHECKS = 1
 
         #region AzCopy params
         $AzCopyCommonArguments = @('--put-md5=true','--skip-version-check=true')
-            
+
         If ($ExcludeFolder){
             $AzCopyCommonArguments += '--exclude-path={0}' -f $ExcludeFolder
         }
@@ -173,9 +173,9 @@ Function Invoke-AzCopyToBlob {
                 'copy'
                 """$SourcePath"""
                 """$FullURL"""
-                
+
             )
-            
+
         }
 
         If($Force){
@@ -199,19 +199,19 @@ Function Invoke-AzCopyToBlob {
             If($ShowProgress){
                 $TransferStatus = Get-Content -Path "$env:temp\stdout.txt" | Select -Last 1
                 If($TransferStatus -match '^\d+'){
-                    
+
                     $DataSet = ($TransferStatus.split(',') -Replace '\w+$|%','')[0..4].Trim()
                     If([int]$DataSet[2] -ne 0){$ErroredFiles=$DataSet[2]}
                     If($ProgressMsg.Length -gt 0){Write-Status -Current $DataSet[0] -Total 100 -Statustext $ProgressMsg -CurStatusText ("Transferred {0}" -f $DataSet[0])}
                     Write-Progress -Activity ('Transferring files to [{0}]' -f $Destination) -Status ("Copied {0} of {1} files..." -f $DataSet[1], $DataSet[4]) -PercentComplete $DataSet[0]
-                
+
                 }ElseIf([string]::IsNullOrWhiteSpace($TransferStatus) ){
                     Write-Progress -Activity ('AzCopy status' -f $Destination) -Status "Nothing to report" -PercentComplete 100
-                
+
                 }Else{
                     Write-Progress -Activity ('AzCopy status' -f $Destination) -Status "$TransferStatus" -PercentComplete 100
                 }
-                
+
             }
         }
     }End{
@@ -252,13 +252,13 @@ Function Invoke-AzCopyFromBlob {
         [String] $ProgressMsg,
         [string[]] $ValidExitCodes = @(0,1),
         [switch] $Force
-        
+
     )
     Begin{
         $env:SEE_MASK_NOZONECHECKS = 1
 
         #region AzCopy params
-        $AzCopyCommonArguments = @() 
+        $AzCopyCommonArguments = @()
 
         If ($PreserveTags){
             $AzCopyCommonArguments += '--s2s-preserve-blob-tags=true'
@@ -267,7 +267,7 @@ Function Invoke-AzCopyFromBlob {
         If ($AddTags){
             $AzCopyCommonArguments += '--blob-tags=' + $AddTags
         }
-        
+
         If($SasToken){
             $SourceURLAndSasToken = "$SourceURL/$BlobFile`?$SasToken"
         }Else{
@@ -307,19 +307,19 @@ Function Invoke-AzCopyFromBlob {
             If($ShowProgress){
                 $TransferStatus = Get-Content -Path "$env:temp\stdout.txt" | Select -Last 1
                 If($TransferStatus -match '^\d+'){
-                    
+
                     $DataSet = ($TransferStatus.split(',') -Replace '\w+$|%','')[0..4].Trim()
                     If([int]$DataSet[2] -ne 0){$ErroredFiles=$DataSet[2]}
                     If($ProgressMsg.Length -gt 0){Write-Status -Current $DataSet[0] -Total 100 -Statustext $ProgressMsg -CurStatusText ("Transferred {0}" -f $DataSet[0])}
                     Write-Progress -Activity ('Transferring files to [{0}]' -f $Destination) -Status ("Copied {0} of {1} files..." -f $DataSet[1], $DataSet[4]) -PercentComplete $DataSet[0]
-                
+
                 }ElseIf([string]::IsNullOrWhiteSpace($TransferStatus) ){
                     Write-Progress -Activity ('AzCopy status' -f $Destination) -Status "Nothing to report" -PercentComplete 100
-                
+
                 }Else{
                     Write-Progress -Activity ('AzCopy status' -f $Destination) -Status "$TransferStatus" -PercentComplete 100
                 }
-                
+
             }
         }
     }End{
@@ -338,9 +338,9 @@ Function Invoke-AzCopyFromBlob {
 
 
 
-function Write-Status 
+function Write-Status
 {
-  
+
   param([int]$Current,
         [int]$Total,
         [string]$Statustext,
@@ -415,7 +415,7 @@ Function Invoke-RestCopyFromBlob{
         [string] $SasToken,
 
         [switch] $Force
-        
+
     )
     Begin{
         Write-Verbose ("Starting Blob transfer to {0}" -f $DestinationPath)
@@ -425,7 +425,7 @@ Function Invoke-RestCopyFromBlob{
             Write-host ("File path already exists! [{0}\{1}]" -f $DestinationPath,$BlobFile)
         }Else{
             $uri = ($BlobUrl + '/' + $BlobFile +'?' + $SasToken)
-            $Extension = [System.IO.Path]::GetExtension($BlobFile)  
+            $Extension = [System.IO.Path]::GetExtension($BlobFile)
             switch($Extension){
                 '.json' {$ContentType="application/json"}
                 '.xml'  {$ContentType="text/xml"}
@@ -441,7 +441,7 @@ Function Invoke-RestCopyFromBlob{
                 Write-Error ("Failed. {0}" -f $_.Exception.Message)
             }
         }
-        
+
     }End{
         Write-Verbose ("Completed Blob transfer to {0}" -f $DestinationPath)
     }
@@ -490,7 +490,7 @@ function Invoke-RestCopyToBlob{
                 $Filename = Split-Path $FilePath -Leaf
                 $uri = ($BlobUrl + '/' + $Filename +'?' + $SasToken)
                 $headers = @{"x-ms-blob-type" = "BlockBlob"}
-                
+
                 Write-Verbose ("Starting transfer [{0}] to blob" -f $FilePath)
                 try{
                     Write-Verbose ("COMMAND: Invoke-WebRequest `"$uri`" -Method Put -InFile `"$FilePath`" -Headers {0}" -f (($headers.GetEnumerator()| %{$_.Name + ": " + $_.Value}) -join ','))
@@ -501,9 +501,9 @@ function Invoke-RestCopyToBlob{
             }Else{
                 Write-Error ("File not found! [{0}]" -f $FilePath)
             }
-            
+
         }
-        
+
     }End{
         Write-Verbose ("Completed transfer to [{0}]" -f $BlobUrl)
     }
