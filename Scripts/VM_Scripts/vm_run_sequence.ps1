@@ -1,84 +1,11 @@
 <#
-    .SYNOPSIS
-    Runs a sequence of steps
-
-    .NOTES
-    AUTHOR: Dick Tracy II (@powershellcrack)
-    PROCESS: What this script will do (in order)
-    1. Imports list of applications to install
-    2. Installs applications
-    3. Install updates
-    4. Cleanup toolkit
-
-    TODO:
-        - Monitor script progess; output results to log
-
-    .PARAMETER ResourcePath
-    Specify a path other than the relative path this script is running in
-
-    .PARAMETER ControlSettings
-    Specify a setting configuration file. Defaults to settings.json
-
-    .PARAMETER Sequence
-    Specify a image configuration file (sequence.json). Defaults to Win11AvdGFEImage
-
-    .EXAMPLE
-    PS .\A5_run_sequence.ps1
-
-    RESULT: Run default setting and creates VM and runs prep script
-
-   .EXAMPLE
-    PS .\A5_run_sequence.ps1 -ControlSettings setting.gov.json
-
-    RESULT: Run script using configuration for a gov tenant and creates VM and runs prep script
-
-    .EXAMPLE
-    PS .\A5_run_sequence.ps1 -ResourcePath C:\Temp -ControlSettings setting.test.json
-
-    RESULT: Run script using configuration from a another file, and creates VM and runs prep script from C:\Temp\Templates
+THIS CODE IS COPIED TO AVD REFERENCE VM
 #>
 [CmdletBinding()]
 Param(
-    [string]$ResourcePath,
-
-    [Parameter(Mandatory = $false)]
-    [ArgumentCompleter( {
-        param ( $commandName,
-                $parameterName,
-                $wordToComplete,
-                $commandAst,
-                $fakeBoundParameters )
-
-
-        $ToolkitSettings = Get-Childitem "$PSScriptRoot\Control" -Filter Settings* | Where Extension -eq '.json' | Select -ExpandProperty Name
-
-        $ToolkitSettings | Where-Object {
-            $_ -like "$wordToComplete*"
-        }
-
-    } )]
-    [Alias("Config","Setting")]
-    [string]$ControlSettings = "Settings.json",
-
-    [Parameter(Mandatory = $false)]
-    [ArgumentCompleter( {
-        param ( $commandName,
-                $parameterName,
-                $wordToComplete,
-                $commandAst,
-                $fakeBoundParameters )
-
-
-        $Sequence = Get-Childitem "$PSScriptRoot\Control" -Directory | Select -ExpandProperty Name
-
-        $Sequence | Where-Object {
-            $_ -like "$wordToComplete*"
-        }
-
-    } )]
-    [Alias("ImageBuild","Template")]
-    [string]$Sequence="Win11AvdGFEImage"
-
+    [string]$ResourcePath="<resourcePath>",
+    [string]$Sequence="<sequence>",
+    [string]$ControlSettings = "<settings>"
 )
 #=======================================================
 # VARIABLES
@@ -281,7 +208,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
                                 If($Result.ExitCode -in $SequenceItem.ValidExitCodes){
                                     Write-Host "Install command ran successfully" -ForegroundColor Green
                                 }Else{
-                                    Write-YaCMLogEntry -Message ("Install command failed for [{0}], error [{1}]" -f $SequenceItem.name,$Result.ExitCode) -Severity 3
+                                    #Write-YaCMLogEntry -Message ("Install command failed for [{0}], error [{1}]" -f $SequenceItem.name,$Result.ExitCode) -Severity 3
                                     Write-Host ('Failed. Exit Code: {0}' -f $Result.ExitCode) -ForegroundColor Red
                                     If([System.Convert]::ToBoolean($SequenceItem.continueOnError) -eq $false){
                                         Break
@@ -322,9 +249,6 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
                             Break
                         }
 
-                        $stopwatch.Stop()
-                        $stopwatch.Reset()
-                        $stopwatch.Restart()
                     }#end filename loop
 
                 }Elseif([System.Convert]::ToBoolean($SequenceItem.continueOnError)){
@@ -347,7 +271,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
                     Try{
                         Invoke-Expression $expandedscript
                     }Catch{
-                        Write-YaCMLogEntry -Message ("Failed to run command [{0}], error [{1}]" -f $expandedscript,$_.exception.message) -Severity 3
+                        #Write-YaCMLogEntry -Message ("Failed to run command [{0}], error [{1}]" -f $expandedscript,$_.exception.message) -Severity 3
                         Write-Host ('Failed. Error: {0}' -f $_.exception.message) -ForegroundColor Red
                         If([System.Convert]::ToBoolean($SequenceItem.continueOnError) -eq $false){
                             Break
