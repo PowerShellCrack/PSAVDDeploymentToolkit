@@ -34,7 +34,7 @@
             "$version = (Get-ChildItem -Path \"[localPath]\" -Recurse -Directory | Where BaseName -match \"\\d+(\\.\\d+){1,3}\").BaseName",
             "Pop-Location"
         ],
-        "installArguments": "\"[outputPath]\" /configure \"[localPath]\\configuration.xml\"",
+        "installArguments": "/configure \"[localPath]\\configuration.xml\"",
         "detectionType": "exeVersion"
     },
 

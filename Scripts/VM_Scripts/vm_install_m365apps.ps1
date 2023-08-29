@@ -79,7 +79,6 @@ $FilteredCustomizations = ($ControlCustomizationData.customSequence | Where -Fil
 . "$ScriptsPath\SoftwareInventory.ps1"
 . "$ScriptsPath\WindowsUpdate.ps1"
 
-
 ## ================================
 ## IMPORT OFFLINE MODULES
 ## ================================
