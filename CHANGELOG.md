@@ -1,5 +1,10 @@
 # Change log for AVDToolkitToolkit
 
+## 1.1.3 Aug 29, 2023
+
+- Moved 7Zip cmdlets to a seperate file; calls when needed; updated dependencies
+- Fixe M365 part extraction. Move extracted files that may be in an additional folder to one level up
+
 ## 1.1.2 Aug 28, 2023
 
 - Changed aib.json to sequence.json; account Intune app management sequence

@@ -44,6 +44,7 @@ Start-transcript "$LogsPath\$LogfileName" -ErrorAction Stop
 Write-Host "[string]`$ResourcePath=`"$ResourcePath`""
 Write-Host "[string]`$Sequence=`"$Sequence`""
 Write-Host "[string]`$ControlSettings = `"$ControlSettings`""
+
 ## ================================
 ## GET SETTINGS
 ## ================================
@@ -74,9 +75,9 @@ $FilteredCustomizations = ($ControlCustomizationData.customSequence | Where -Fil
 ## ================================
 . "$ScriptsPath\Symbols.ps1"
 . "$ScriptsPath\Environment.ps1"
+. "$ScriptsPath\SevenZipCmdlets.ps1"
 . "$ScriptsPath\SoftwareInventory.ps1"
 . "$ScriptsPath\WindowsUpdate.ps1"
-
 
 ## ================================
 ## IMPORT OFFLINE MODULES
@@ -87,12 +88,10 @@ Install-PackageProvider NuGet -Force
 #Register-PSRepository -Name Local -SourceLocation "$ToolsPath\Modules" -InstallationPolicy Trusted
 
 $OfflineModules = Get-ChildItem $ToolsPath -Recurse -Filter *.nupkg
-$ModulesNeeded = @('MSFTLinkDownloader','YetAnotherCMLogger','PSWindowsUpdate')
-#TEST $Module = $ToolkitSettings.Settings.offlineSupportingModules[0]
-#TEST $Module = $ToolkitSettings.Settings.offlineSupportingModules[2]
+$ModulesNeeded = @('PSWindowsUpdate')
 $i=0
-Foreach($Module in $ToolkitSettings.Settings.offlineSupportingModules){
-    Write-Host ("`n[{0} of {1}] Processing module [{2}]..." -f $i,$ToolkitSettings.Settings.offlineSupportingModules.count,$Module )
+Foreach($Module in $ModulesNeeded){
+    Write-Host ("`n[{0} of {1}] Processing module [{2}]..." -f $i,$ModulesNeeded.count,$Module )
     If($OfflineModule = $OfflineModules | Where Name -like "$Module*"){
 
         $Name = $OfflineModule.BaseName.split('.')[0].Trim()
@@ -118,20 +117,12 @@ Foreach($Module in $ToolkitSettings.Settings.offlineSupportingModules){
 ## ================================
 ## MAIN
 ## ================================
-Write-Host ("`nSTARTING APP INSTALL PROCESS") -ForegroundColor Cyan
-$stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
-
-#convert properties to variables (used durign expand tree)
-$ToolkitSettings | Select-Object -ExpandProperty TenantEnvironment | ConvertTo-Variables
+Write-Host ("`nSTARTING WINDOWS UPDATE PROCESS") -ForegroundColor Cyan
 
 $i = 0
-#TEST $SequenceItem = $ControlCustomizationData.customSequence[9]
-#TEST $SequenceItem = $ControlCustomizationData.customSequence[0]
-#TEST $SequenceItem = $ControlCustomizationData.customSequence[13]
 Foreach($SequenceItem in $FilteredCustomizations){
     $i++
     Write-Host ("`n[{0}/{1}] Processing step: {2} {3}..." -f $i,$FilteredCustomizations.count,$SequenceItem.name,$SequenceItem.version -replace '\[version\]','' )
-
 
     switch($SequenceItem.type){
 
@@ -140,10 +131,10 @@ Foreach($SequenceItem in $FilteredCustomizations){
             #find the application's details associated with id
             $ApplicationData = $ApplicationsList | Where appId -eq $SequenceItem.id
 
-
             If($ApplicationData){
+
                 #Always check to ensure same product and version is being installed
-                If( (Get-InstalledSoftware -Name $ApplicationData.productName -IncludeExeTypes).Version -eq $ApplicationData.version){
+                If( Test-ApplicationDetection -ApplicationObject $ApplicationData){
                     Write-Host ("    |---Already installed [{0}], skipping..." -f $ApplicationData.version) -ForegroundColor Green
                     Continue
                 }
@@ -233,7 +224,7 @@ Foreach($SequenceItem in $FilteredCustomizations){
                             If($Result.ExitCode -in $SequenceItem.ValidExitCodes){
                                 Write-Host "Install command ran successfully" -ForegroundColor Green
                             }Else{
-                                Write-YaCMLogEntry -Message ("Install command failed for [{0}], error [{1}]" -f $SequenceItem.name,$Result.ExitCode) -Severity 3
+                                #Write-YaCMLogEntry -Message ("Install command failed for [{0}], error [{1}]" -f $SequenceItem.name,$Result.ExitCode) -Severity 3
                                 Write-Host ('Failed. Exit Code: {0}' -f $Result.ExitCode) -ForegroundColor Red
                                 If([System.Convert]::ToBoolean($SequenceItem.continueOnError) -eq $false){
                                     Break
@@ -258,10 +249,11 @@ Foreach($SequenceItem in $FilteredCustomizations){
 
 
                         If( [System.Convert]::ToBoolean($SequenceItem.validateInstalled) ){
-                            If($InstalledApp = Get-InstalledSoftware -Name $ApplicationData.productName -IncludeExeTypes ){
-                                Write-Host ("Successfully installed version [{1}] in: {0} seconds" -f [math]::Round($stopwatch.Elapsed.TotalSeconds,0),$InstalledApp.Version) -ForegroundColor Green
+                            #Always check to ensure same product and version is being installed
+                            If( Test-ApplicationDetection -ApplicationObject $ApplicationData){
+                                Write-Host ("Successfully installed application [{1}] in: {0} seconds" -f [math]::Round($stopwatch.Elapsed.TotalSeconds,0),$ApplicationData.productName) -ForegroundColor Green
                             }Else{
-                                Write-Host ("Unable to find installed product: {0}" -f $ApplicationData.productName) -ForegroundColor Red
+                                Write-Host ("Unable to find product: {0}" -f $ApplicationData.productName) -ForegroundColor Red
                             }
                         }
 
@@ -274,9 +266,6 @@ Foreach($SequenceItem in $FilteredCustomizations){
                         Break
                     }
 
-                    $stopwatch.Stop()
-                    $stopwatch.Reset()
-                    $stopwatch.Restart()
                 }#end filename loop
 
             }Elseif([System.Convert]::ToBoolean($SequenceItem.continueOnError)){
@@ -299,13 +288,14 @@ Foreach($SequenceItem in $FilteredCustomizations){
                 Try{
                     Invoke-Expression $expandedscript
                 }Catch{
-                    Write-YaCMLogEntry -Message ("Failed to run command [{0}], error [{1}]" -f $expandedscript,$_.exception.message) -Severity 3
+                    #Write-YaCMLogEntry -Message ("Failed to run command [{0}], error [{1}]" -f $expandedscript,$_.exception.message) -Severity 3
                     Write-Host ('Failed. Error: {0}' -f $_.exception.message) -ForegroundColor Red
                     If([System.Convert]::ToBoolean($SequenceItem.continueOnError) -eq $false){
                         Break
                     }
                 }
             }
+
             Write-Host ("Done") -ForegroundColor Green
         }#end script switch
 
@@ -335,8 +325,10 @@ Foreach($SequenceItem in $FilteredCustomizations){
                 }
                 Write-Host ("Done") -ForegroundColor Green
             }
+
         }#end windows update switch
     }
+
 }
 
 $global:ProgressPreference = $prevProgressPreference

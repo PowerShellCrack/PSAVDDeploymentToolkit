@@ -122,6 +122,7 @@ Start-transcript "$LogsPath\$LogfileName" -ErrorAction Stop
 ## ================================
 . "$ScriptsPath\Symbols.ps1"
 . "$ScriptsPath\Environment.ps1"
+. "$ScriptsPath\SevenZipCmdlets.ps1"
 . "$ScriptsPath\BlobControl.ps1"
 
 ## ================================

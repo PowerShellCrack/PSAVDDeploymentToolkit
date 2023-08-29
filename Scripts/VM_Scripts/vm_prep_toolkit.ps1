@@ -10,7 +10,7 @@ Param(
     [string]$SasToken="<sastoken>",
     [string[]]$FilterSequenceType = @('Application','Script'),
     [string[]]$FilterSequenceName = @(),
-    [string[]]$ExcludeSequenceName = @('Microsoft 365 Apps for enterprise - en-us','Microsoft Visio - en-us','Microsoft Project - en-us')
+    [string[]]$ExcludeSequenceName = @()
 )
 #=======================================================
 # VARIABLES
@@ -131,6 +131,7 @@ Foreach($Item in $AVDDeploymentFiles.GetEnumerator()){
 ## IMPORT FUNCTIONS AFTER FILES ARE DONWLOADED
 ## ===========================================
 . "$ScriptsPath\Environment.ps1"
+. "$ScriptsPath\SevenZipCmdlets.ps1"
 . "$ScriptsPath\BlobControl.ps1"
 
 ## ================================
@@ -176,10 +177,6 @@ $BlobAzCopyParams = @{
     AzCopyPath="$ToolsPath\azcopy.exe"
 }
 
-## ================================
-## DOWNLOAD APPS
-## ================================
-
 #build dyanmic filter
 $filterScript = @()
 $filterScript += { $_.enabled -eq $true}
@@ -198,12 +195,12 @@ If($ExcludeSequenceName.count -gt 0){
 $JoinedFilterScript = [scriptblock]::Create($filterScript -join ' -and')
 #select only steps that are filtered to match name and type
 $FilteredCustomizations = ($ControlCustomizationData.customSequence | Where -FilterScript $JoinedFilterScript)
+## ================================
+## MAIN
+## ================================
+Write-Host ("`nSTARTING PREP PROCESS") -ForegroundColor Cyan
 
 $i=0
-#TEST $SequenceItem = $ControlCustomizationData.customSequence[9]
-#TEST $SequenceItem = $ControlCustomizationData.customSequence[0]
-#TEST $SequenceItem = $ControlCustomizationData.customSequence[13]
-#TEST $SequenceItem = $FilteredCustomizations[1]
 Foreach($SequenceItem in $FilteredCustomizations){
     $i++
     Write-Host ("`n[{0}/{1}] Processing {2} [{3}]..." -f $i,$FilteredCustomizations.count,$SequenceItem.type,$SequenceItem.name )
@@ -213,23 +210,25 @@ Foreach($SequenceItem in $FilteredCustomizations){
         switch($SequenceItem.type){
 
             'Application' {
+                $AppUploadList = @()
                 #grab the upload metadata that matches
-                $AppUploadList = $UploadedApplications | Where id -eq $SequenceItem.id
+                $AppUploadList += $UploadedApplications | Where id -eq $SequenceItem.id
                 #grab the application metadata that matches
                 $Application = $ApplicationsList | Where appId -eq $SequenceItem.id
 
                 If($AppUploadList.count -gt 0){
                     $a=0
+                    #set default value; change to false if any file fails
+                    $ExtractFile = $true
                     Foreach($AppUploadItem in $AppUploadList)
                     {
                         $a++
                         If( $AppUploadItem.Uploaded -eq $true){
                             Write-Host ("    |---[{0}/{1}] Downloading [{2}]..." -f $a,$AppUploadList.count,$AppUploadItem.ArchiveFile) -NoNewline:$NoNewLine
                             try{
-                                Invoke-AzCopyFromBlob -BlobFile $AppUploadItem.ArchiveFile -DestinatioPath $ApplicationsPath @BlobAzCopyParams -Force
+                                Invoke-AzCopyFromBlob -BlobFile $AppUploadItem.ArchiveFile -DestinationPath $ApplicationsPath @BlobAzCopyParams -Force
                                 #Invoke-RestCopyFromBlob -BlobFile $AppUploadItem.ArchiveFile -Destination "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" @BlobRestParams
-                                Write-Host ("Done") -ForegroundColor Green
-                                $ExtractFile = $true
+                                #Write-Host ("Done") -ForegroundColor Green
                             }Catch{
                                 Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
                                 $ExtractFile = $false
@@ -268,22 +267,28 @@ Foreach($SequenceItem in $FilteredCustomizations){
                         $Application.localPath = $AppDestinationPath
 
                         Try{
-                            #extract data to destination
+                            #extract data to app destination folder
                             If($ExtractParts){
                                 Write-Host ("    |---Extracting {1} parts starting with [{0}]..." -f $AppUploadItem.ArchiveFile,$AppUploadList.count) -NoNewline:$NoNewLine
-                                Expand-7zipArchive -SevenZipPath ($ToolsPath + '\7za.exe') -FilePath "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" -DestinationPath $AppDestinationPath -Force
+                                Expand-7zipArchive -SevenZipPath ($ToolsPath + '\7za.exe') -FilePath "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" -DestinationPath $AppDestinationPath -ExtractHere -Force
                             }Else{
                                 Write-Host ("    |---Extracting [{0}]..." -f $AppUploadItem.ArchiveFile) -NoNewline:$NoNewLine
                                 Expand-Archive "$ApplicationsPath\$($AppUploadItem.ArchiveFile)" -DestinationPath $AppDestinationPath -Force
                             }
                             Write-Host ("Done") -ForegroundColor Green
+
+                            #when some apps extract, they will create an extra folder; move files up one level
+                            If($ExtraFolder = Test-IsDuplicateDirectoryExists -DestinationPath $AppDestinationPath -PassThru){
+                                Move-ItemUpDirectory -CurrentPath "$AppDestinationPath\$ExtraFolder"
+                            }
+
+                            #clean up files
+                            Foreach($File in $AppUploadList.ArchiveFile){
+                                Remove-item "$ApplicationsPath\$File" -ErrorAction SilentlyContinue -Force | Out-Null
+                            }
                         }Catch{
                             Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
                             Continue
-                        }
-
-                        Foreach($File in $AppUploadList.ArchiveFile){
-                            Remove-item "$ApplicationsPath\$File" -ErrorAction SilentlyContinue -Force | Out-Null
                         }
                     }
 

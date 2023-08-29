@@ -120,6 +120,7 @@ $ToolkitSettings = Get-Content "$ControlPath\$ControlSettings" | ConvertFrom-Jso
 ## ================================
 . "$ScriptsPath\Symbols.ps1"
 . "$ScriptsPath\Environment.ps1"
+. "$ScriptsPath\SevenZipCmdlets.ps1"
 . "$ScriptsPath\SoftwareInventory.ps1"
 . "$ScriptsPath\WindowsUpdate.ps1"
 

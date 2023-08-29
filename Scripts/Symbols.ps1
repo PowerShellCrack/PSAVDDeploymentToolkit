@@ -66,5 +66,5 @@ Function Get-Symbol{
        'WhiteCircle' { Return [char]::ConvertFromUtf32(0x26AA)}
        'YellowCircle' { Return [char]::ConvertFromUtf32(0x1F7E1)}
     }
-    
+
 }

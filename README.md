@@ -1,11 +1,11 @@
-# A toolkit to build azure images with applications "offline" 
+# A toolkit to build azure images with applications "offline"
 
 This toolkit originated from the [PSAIBDeploymentToolkit](https://github.com/PowerShellCrack/PSAIBDeploymentToolkit). I am also developing that, however I needed to develop a way to manage applications in an "offline" manor. This Toolkit does not use AIB instead it uses scripts that build images using the remote Powershell command invoked in a Azure VM. This can support both Azure IL5 and IL6.
 
 The structure is similar to MDT's and each defined "sequenced" process is within the _Control_ folder and each "sequence" contains an **aib.json** file. This file is not a schema that follows the Azure Image builder schema, however with this file in conjunction with a basic template file (within the _Template_ folder), the _Applications\applications.json_ will **build and capture** a reference image for AVD consumption.
 
-## NOTES 
-I am working to merge this toolkit with my AIB toolkit allowing it to support both methods. 
+## NOTES
+I am working to merge this toolkit with my AIB toolkit allowing it to support both methods.
 
 ## Prereqs
 
@@ -20,7 +20,7 @@ To support multiple environment and applications offline, these applications mus
 # Toolkit folders structure
 
 ```
-AVDDeploymentToolkit    
+AVDDeploymentToolkit
     |-Applications
         |--fslogix
         |--lgpo
@@ -62,7 +62,7 @@ Filename | Explanation | Access Requirements | Run Example | Recommended Cadence
 1. Download repo
 1. Edit the applications.json (or leave it be). See _application.json breakdown_ below
 1. Copy TemplateImage folders in Control folder and name it to your image needs (or edit the existing ones)
-1. Edit the aib.json for the applications,scripts you want to install 
+1. Edit the aib.json for the applications,scripts you want to install
     - See _aib.json breakdown_ below
     - Edit all entries with arrows '\<\>' and choose an option with the pipe '\|'
 1. Copy the settings.example.json and make new file.
@@ -99,7 +99,7 @@ Supported parameters are:
 - **preDownloadScript** – string or array of strings. This is sequential. Each line will run in powershell before download starts. Typically used to get versions or release url
 - **postDownloadScript** – string or array of strings. This is sequential. Each line will run in powershell after download is complete. Typically used to cleanup additional files or extract archive
 - **installArguments** – string. the arguments used to install the application silently
-- **preInstallScript** – string or array of strings. This is sequential. Each line will run in powershell before install starts. Typically used to setup dependencies. 
+- **preInstallScript** – string or array of strings. This is sequential. Each line will run in powershell before install starts. Typically used to setup dependencies.
 - **postInstallScript** – string or array of strings. This is sequential. Each line will run in powershell after application is installed. Typically used to configure post settings for applications
 
 
@@ -175,7 +175,7 @@ Supported parameters are:
 # **settings-<org>.json** breakdown
 
 - **Settings** – Specify paths and modules needed for toolkit to work
-- **TenantEnvironment** – Used for tenant connection with Azure modules 
+- **TenantEnvironment** – Used for tenant connection with Azure modules
 - **AzureResources** – Resources need to manage the image build process. Some key ones to focus on
     - **storageAccount** – used during the application upload and download steps. Specify the storage account used
     - **storageContainer** – used during the application upload and download steps. Specify the container used
@@ -300,11 +300,11 @@ Supported parameters are:
 
 # Dynamic variable support
 
-As each json object is processed, the scripts are looking for bracketed values to convert to variables. This allows to the script to be more dynamic. 
+As each json object is processed, the scripts are looking for bracketed values to convert to variables. This allows to the script to be more dynamic.
 
-### Example 1. 
+### Example 1.
 
-If the script already has a variable _$localpath = "c:\windows\temp\apps"_ the script will look for any property using _\[localPath\]_ and replace it with _"c:\windows\temp\apps"_. 
+If the script already has a variable _$localpath = "c:\windows\temp\apps"_ the script will look for any property using _\[localPath\]_ and replace it with _"c:\windows\temp\apps"_.
 
 ### Example 2
 
@@ -335,8 +335,8 @@ There is a _Logs_ folder that will contain a dated transcript of the AIB sequenc
 
 # Known Issues
 
-- Uploading large files (like M365, Visio, Project, etc) to blob may timeout. I developed a 7zip wrapper script to break the compress file into parts. Everything will upload just fine, but the download doesn't work with split files yet. Don't enable m365 apps yet; use m365 azure marketplace image 
-- 
+- Uploading large files (like M365, Visio, Project, etc) to blob may timeout. I developed a 7zip wrapper script to break the compress file into parts. Everything will upload just fine, but the download doesn't work with split files yet. Don't enable m365 apps yet; use m365 azure marketplace image
+-
 
 # References
 

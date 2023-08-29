@@ -38,11 +38,11 @@ Function Get-PendingWindowsUpdate {
     #$updates = $objSession.CreateUpdateSearcher().Search($Filter).Updates
     #$update = $updates | Select -Last 1
     foreach($update in $objSession.CreateUpdateSearcher().Search($Filter).Updates)
-    {      
+    {
         $CategoryList = $Update.Categories | ?{ $_.Parent.CategoryID -ne "6964aab4-c5b5-43bd-a17d-ffb4346a8e1d" } | %{ $_.Name }
-       
+
         If( $null -ne(Compare-Object $CategoryList -DifferenceObject $Categories -IncludeEqual | Where SideIndicator -eq '==') ){
-            
+
             If($Passthru){
                 $update
             }
@@ -50,8 +50,8 @@ Function Get-PendingWindowsUpdate {
 
                 [pscustomobject] @{
                     ID = $update.Identity.UpdateID
-                    KB = $update.KBARticleIDs| %{ $_ } 
-                    URL = $update.MoreInfoUrls| %{ $_ } 
+                    KB = $update.KBARticleIDs| %{ $_ }
+                    URL = $update.MoreInfoUrls| %{ $_ }
                     PublishedDate = $update.LastDeploymentChangeTime.ToString('yyyy-MM-dd')
                     Type = $CategoryList
                     Title = $update.Title
@@ -97,13 +97,13 @@ Function Install-PendingWindowsUpdate {
     If($IncludeDrivers){
         $Categories += 'Drivers'
     }
-    
+
     Write-Host("Checking for pending updates...") -NoNewline
     Write-YaCMLogEntry -Message ("Checking for pending updates...") -Source ${CmdletName}
     $UpdateSession = New-Object -Com Microsoft.Update.Session
     $UpdateSearcher = $UpdateSession.CreateUpdateSearcher()
     $SearchResult = $UpdateSearcher.Search($Filter)
-    
+
     $FinalResult = @()
     Foreach($Update in $SearchResult.Updates){
         $CategoryList = $Update.Categories | ?{ $_.Parent.CategoryID -ne "6964aab4-c5b5-43bd-a17d-ffb4346a8e1d" } | %{ $_.Name }
@@ -115,20 +115,20 @@ Function Install-PendingWindowsUpdate {
     If ($FinalResult.Updates.Count -eq 0) {
         Write-Host ("no applicable updates found.") -ForegroundColor Green
         Write-YaCMLogEntry -Message ("no applicable updates found.") -Source ${CmdletName}
-        return $False    
+        return $False
     }
     Else{
-        Write-Host ("found {0}." -f $FinalResult.Updates.Count) -ForegroundColor Green  
-        Write-YaCMLogEntry -Message ("found {0}." -f $FinalResult.Updates.Count) -Source ${CmdletName}     
+        Write-Host ("found {0}." -f $FinalResult.Updates.Count) -ForegroundColor Green
+        Write-YaCMLogEntry -Message ("found {0}." -f $FinalResult.Updates.Count) -Source ${CmdletName}
         For ($X = 0; $X -lt $FinalResult.Updates.Count; $X++){
             $Update = $FinalResult.Updates.Item($X)
             Write-Host (" - " + $Update.Title)
             Write-YaCMLogEntry -Message (" - " + $Update.Title) -Source ${CmdletName}
         }
     }
-    
+
     $UpdatesToDownload = New-Object -Com Microsoft.Update.UpdateColl
- 
+
     For ($X = 0; $X -lt $FinalResult.Updates.Count; $X++){
         $Update = $FinalResult.Updates.Item($X)
         #Write-Host( ($X + 1).ToString() + "`> Adding: " + $Update.Title)
@@ -149,35 +149,35 @@ Function Install-PendingWindowsUpdate {
         $Update = $FinalResult.Updates.Item($X)
         If ($Update.IsDownloaded) {
             #Write-Host( ($X + 1).ToString() + "`> " + $Update.Title)
-            $Null = $UpdatesToInstall.Add($Update)        
+            $Null = $UpdatesToInstall.Add($Update)
         }
     }
     $Installer = $UpdateSession.CreateUpdateInstaller()
     $Installer.Updates = $UpdatesToInstall
- 
+
     $InstallationResult = $Installer.Install()
     Write-Host "Done" -ForegroundColor Green
 
     Function Get-ResultDescription ($val){
         Switch ($val){
             0 {"Not Started"}
-            1 {"In Progress"}      
-            2 {"Succeeded"}         
-            3 {"Succeeded With Errors"}  
+            1 {"In Progress"}
+            2 {"Succeeded"}
+            3 {"Succeeded With Errors"}
             4 {"Failed"}
             5 {"Aborted"}
             default {"Unknown ($val)"}
         }
     }
 
-    #Write-Host("List of Updates Installed with Results") 
+    #Write-Host("List of Updates Installed with Results")
     $UpdatesArray = @()
     For ($X = 0; $X -lt $UpdatesToInstall.Count; $X++){
         $UpdatesObject = [pscustomobject] @{
             Title = $UpdatesToInstall.Item($X).Title
             ID = $UpdatesToInstall.Item($X).Identity.UpdateID
-            KB = $UpdatesToInstall.Item($X).KBARticleIDs| %{ $_ } 
-            URL = $UpdatesToInstall.Item($X).MoreInfoUrls| %{ $_ } 
+            KB = $UpdatesToInstall.Item($X).KBARticleIDs| %{ $_ }
+            URL = $UpdatesToInstall.Item($X).MoreInfoUrls| %{ $_ }
             Type = $UpdatesToInstall.Item($X).Categories | ?{ $_.Parent.CategoryID -ne "6964aab4-c5b5-43bd-a17d-ffb4346a8e1d" } | %{ $_.Name }
             Size = $UpdatesToInstall.Item($X).bundledUpdate.MaxDownloadSize
             DownloadURL = $UpdatesToInstall.Item($X).bundledUpdate.DownloadContents.DownloadURL
@@ -185,7 +185,7 @@ Function Install-PendingWindowsUpdate {
             Downloaded = $UpdatesToInstall.Item($X).IsDownloaded
             ResultDescription = Get-ResultDescription($InstallationResult.GetUpdateResult($X).ResultCode)
         }
-        $UpdatesArray += $UpdatesObject        
+        $UpdatesArray += $UpdatesObject
     }
 
     #Write-Host("Installation Result: " + $InstallationResult.ResultCode)
@@ -208,13 +208,13 @@ Function Invoke-PSWindowsUpdate{
     <#
     .SYNOPSIS
         Invokes Windows update process
-    
+
     .PARAMETER SearchCriteria
-        Change the search criteria. Defaults to "(IsInstalled=0 and DeploymentAction=*) or (IsHidden=1 and DeploymentAction=*)"  
-    
+        Change the search criteria. Defaults to "(IsInstalled=0 and DeploymentAction=*) or (IsHidden=1 and DeploymentAction=*)"
+
     .PARAMETER RestartTimeout
         Set timefram to reboot. Defualt to 0
-    
+
     .PARAMETER AllowRestart
         True or False
 
@@ -236,7 +236,7 @@ Function Invoke-PSWindowsUpdate{
         [int]$RestartTimeout = 0,
         [switch]$AllowRestart
     )
-    
+
     $ProductName = 'Windows Updates'
     Write-Host ('Enabling {0} agent...' -f $ProductName)
     New-ItemPath -Path "HKLM:\SOFTWARE\Policies\Microsoft\Windows\WindowsUpdate\AU"
@@ -251,7 +251,7 @@ Function Invoke-PSWindowsUpdate{
     Write-Host ("  [1 of 2]: Searching for {0}..." -f  $ProductName) -NoNewline
 
     Add-WUServiceManager -ServiceID "7971f918-a847-4430-9279-4a52d1efe18d" -Confirm:$false -Silent
-    
+
     $Updates = Get-WindowsUpdate -Criteria $SearchCriteria
     $Null = $Updates | UnHide-WindowsUpdate -Criteria $SearchCriteria -Confirm:$false
     Write-Host ('Done. Found {0} updates' -f $Updates.count) -ForegroundColor Gree

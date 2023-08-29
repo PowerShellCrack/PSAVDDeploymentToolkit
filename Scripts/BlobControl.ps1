@@ -243,7 +243,7 @@ Function Invoke-AzCopyFromBlob {
         [string[]] $SourceURL,
         [Parameter(Mandatory = $true)]
         [Alias('Destination','DestinationUri')]
-        [string] $DestinatioPath,
+        [string] $DestinationPath,
         [string] $AddTags,
         [switch]$PreserveTags,
         [string] $SasToken,
@@ -311,13 +311,13 @@ Function Invoke-AzCopyFromBlob {
                     $DataSet = ($TransferStatus.split(',') -Replace '\w+$|%','')[0..4].Trim()
                     If([int]$DataSet[2] -ne 0){$ErroredFiles=$DataSet[2]}
                     If($ProgressMsg.Length -gt 0){Write-Status -Current $DataSet[0] -Total 100 -Statustext $ProgressMsg -CurStatusText ("Transferred {0}" -f $DataSet[0])}
-                    Write-Progress -Activity ('Transferring files to [{0}]' -f $Destination) -Status ("Copied {0} of {1} files..." -f $DataSet[1], $DataSet[4]) -PercentComplete $DataSet[0]
+                    Write-Progress -Activity ('Transferring files to [{0}]' -f $DestinationPath) -Status ("Copied {0} of {1} files..." -f $DataSet[1], $DataSet[4]) -PercentComplete $DataSet[0]
 
                 }ElseIf([string]::IsNullOrWhiteSpace($TransferStatus) ){
-                    Write-Progress -Activity ('AzCopy status' -f $Destination) -Status "Nothing to report" -PercentComplete 100
+                    Write-Progress -Activity ('AzCopy status') -Status "Nothing to report" -PercentComplete 100
 
                 }Else{
-                    Write-Progress -Activity ('AzCopy status' -f $Destination) -Status "$TransferStatus" -PercentComplete 100
+                    Write-Progress -Activity ('AzCopy status') -Status "$TransferStatus" -PercentComplete 100
                 }
 
             }

@@ -26,7 +26,7 @@ function Get-WinGetList {
     If(Test-VSCode -eq $false -and Test-IsISE -eq $false){
         [Console]::OutputEncoding =  $OriginalEncoding
     }
-    
+
 }
 
 function Get-WinGetUpgradeAvailable {
@@ -54,7 +54,7 @@ function Get-WinGetUpgradeAvailable {
         If(Test-VSCode -eq $false -and Test-IsISE -eq $false){
             [Console]::OutputEncoding = [System.Text.UTF8Encoding]::new()
         }
-        
+
         # filter out progress-display and header-separator lines
         $List = Get-WinGetList
 

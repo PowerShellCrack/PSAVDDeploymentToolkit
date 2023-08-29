@@ -1,21 +1,21 @@
 Function Get-VersionInfo {
     [CmdletBinding()]
     param (
-        [parameter(Mandatory=$true)] 
-        [ValidateNotNullOrEmpty()] 
+        [parameter(Mandatory=$true)]
+        [ValidateNotNullOrEmpty()]
         [System.IO.FileInfo] $FilePath
     )
     Begin{}
     Process{
-        if (!(Test-Path $FilePath.FullName)) { 
-            throw "File '{0}' does not exist" -f $FilePath.FullName 
+        if (!(Test-Path $FilePath.FullName)) {
+            throw "File '{0}' does not exist" -f $FilePath.FullName
         }
         Write-Verbose ("Getting version of file: {0}" -f $FilePath.FullName)
         switch($FilePath.Extension){
             '.msi' {
                 $Version = Get-MsiInfo -Path $FilePath.FullName -Property ProductVersion
             }
-    
+
             '.exe' {
                 $Version = (Get-ItemProperty $FilePath.FullName).VersionInfo.ProductVersion
             }
@@ -116,14 +116,14 @@ function Get-InstalledSoftware {
     .PARAMETER Name
         The software title you'd like to limit the query to.
 
-    .PARAMETER IncludeExeTypes 
+    .PARAMETER IncludeExeTypes
         Inlcudes non MSI instaled apps
 
     .EXAMPLE
         Get-InstalledSoftware
 
         This example retrieves all software installed on the local computer
-    
+
     .EXAMPLE
         Get-InstalledSoftware -IncludeExeTypes
 
@@ -167,7 +167,7 @@ function Get-InstalledSoftware {
                 @{n='Version'; e={$_.GetValue('DisplayVersion')}},
                 @{n='Uninstall'; e={$_.GetValue('UninstallString')}}
             )
-            
+
             Get-ChildItem @gciParams | Where $WhereBlock | Select-Object -Property $selectProperties
         }
     }
@@ -183,11 +183,11 @@ Function Test-ApplicationDetection {
 
     If($ApplicationObject.detectionType){
         $DetectedApp = Get-InstalledSoftware -Name $ApplicationObject.productName -IncludeExeTypes
-        
+
         Try{
             switch($ApplicationObject.detectionType){
                 'productName' {
-                    
+
                     If( $DetectedApp ){
                         Write-Verbose ("Application [{0} ({1})] is installed..." -f $DetectedApp.Name,$DetectedApp.Version)
                         Return $true
@@ -237,7 +237,7 @@ Function Test-ApplicationDetection {
     }Else{
         Return $false
     }
-    
+
 }
 
 Function Get-FriendlyMsiExecMsg($exit) {
