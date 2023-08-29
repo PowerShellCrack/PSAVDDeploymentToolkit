@@ -7,8 +7,8 @@ Param(
     [string]$Sequence="<sequence>",
     [string]$ControlSettings = "<settings>",
     [string[]]$FilterSequenceType = @('WindowsUpdate'),
-    [string[]]$FilterSequenceName = @(),
-    [string[]]$ExcludeSequenceName = @()
+    [string[]]$IncludeSequenceId = @(),
+    [string[]]$ExcludeSequenceId = @()
 )
 #=======================================================
 # VARIABLES
@@ -59,12 +59,12 @@ If($FilterSequenceType.count -gt 0){
     $filterScript += { $_.Type -in $FilterSequenceType}
 }
 
-If($FilterSequenceName.count -gt 0){
-    $filterScript += { $_.Name -in $FilterSequenceName}
+If($IncludeSequenceId.count -gt 0){
+    $filterScript += { $_.Id -in $IncludeSequenceId}
 
 }
-If($ExcludeSequenceName.count -gt 0){
-    $filterScript += { $_.Name -notin $ExcludeSequenceName}
+If($ExcludeSequenceId.count -gt 0){
+    $filterScript += { $_.Id -notin $ExcludeSequenceId}
 }
 #combine filter into one scripblock
 $JoinedFilterScript = [scriptblock]::Create($filterScript -join ' -and')

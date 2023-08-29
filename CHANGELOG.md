@@ -2,8 +2,9 @@
 
 ## 1.1.3 Aug 29, 2023
 
-- Moved 7Zip cmdlets to a seperate file; calls when needed; updated dependencies
+- Moved 7Zip cmdlets to a separate file; calls when needed; updated dependencies
 - Fixe M365 part extraction. Move extracted files that may be in an additional folder to one level up
+- Change VM script's sequence filters from name to id specifically for M365 apps. ID is more consistent than sequence friendly name
 
 ## 1.1.2 Aug 28, 2023
 

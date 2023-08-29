@@ -7,8 +7,8 @@ Param(
     [string]$Sequence="<sequence>",
     [string]$ControlSettings = "<settings>",
     [string[]]$FilterSequenceType = @('Application','Script'),
-    [string[]]$FilterSequenceName = @(),
-    [string[]]$ExcludeSequenceName = @('Microsoft 365 Apps for enterprise - en-us','Microsoft Visio - en-us','Microsoft Project - en-us')
+    [string[]]$IncludeSequenceId = @(),
+    [string[]]$ExcludeSequenceId = @('73d9d3c6-0041-48dc-9866-55b6c1f2af33','bec3bda7-dc2a-49dd-a7c7-23820f303061','55ef05ee-ec78-4ef4-a51b-f9406c059dc9')
 )
 #=======================================================
 # VARIABLES
@@ -59,12 +59,12 @@ If($FilterSequenceType.count -gt 0){
     $filterScript += { $_.Type -in $FilterSequenceType}
 }
 
-If($FilterSequenceName.count -gt 0){
-    $filterScript += { $_.Name -in $FilterSequenceName}
+If($IncludeSequenceId.count -gt 0){
+    $filterScript += { $_.Id -in $IncludeSequenceId}
 
 }
-If($ExcludeSequenceName.count -gt 0){
-    $filterScript += { $_.Name -notin $ExcludeSequenceName}
+If($ExcludeSequenceId.count -gt 0){
+    $filterScript += { $_.Id -notin $ExcludeSequenceId}
 }
 #combine filter into one scripblock
 $JoinedFilterScript = [scriptblock]::Create($filterScript -join ' -and')
