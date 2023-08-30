@@ -224,7 +224,7 @@ Foreach($SequenceItem in $FilteredCustomizations){
                             If($Result.ExitCode -in $SequenceItem.ValidExitCodes){
                                 Write-Host "Install command ran successfully" -ForegroundColor Green
                             }Else{
-                                #Write-YaCMLogEntry -Message ("Install command failed for [{0}], error [{1}]" -f $SequenceItem.name,$Result.ExitCode) -Severity 3
+                                Write-Verbose ("Install command failed for [{0}], error [{1}]" -f $SequenceItem.name,$Result.ExitCode)
                                 Write-Host ('Failed. Exit Code: {0}' -f $Result.ExitCode) -ForegroundColor Red
                                 If([System.Convert]::ToBoolean($SequenceItem.continueOnError) -eq $false){
                                     Break
@@ -288,7 +288,7 @@ Foreach($SequenceItem in $FilteredCustomizations){
                 Try{
                     Invoke-Expression $expandedscript
                 }Catch{
-                    #Write-YaCMLogEntry -Message ("Failed to run command [{0}], error [{1}]" -f $expandedscript,$_.exception.message) -Severity 3
+                    Write-Verbose ("Failed to run command [{0}], error [{1}]" -f $expandedscript,$_.exception.message)
                     Write-Host ('Failed. Error: {0}' -f $_.exception.message) -ForegroundColor Red
                     If([System.Convert]::ToBoolean($SequenceItem.continueOnError) -eq $false){
                         Break
@@ -311,7 +311,8 @@ Foreach($SequenceItem in $FilteredCustomizations){
             }
 
             Write-Host ("    |---Running step: {0}...")
-            Invoke-PSWindowsUpdate -AllowRestart:$([System.Convert]::ToBoolean($SequenceItem.rebootOnSuccess)) -RestartTimeout $SequenceItem.restartTimeout
+            #Invoke-PSWindowsUpdate -AllowRestart:$([System.Convert]::ToBoolean($SequenceItem.rebootOnSuccess)) -RestartTimeout $SequenceItem.restartTimeout
+            Install-AllWindowsUpdates -AllowRestart:$([System.Convert]::ToBoolean($SequenceItem.rebootOnSuccess)) -RestartTimeout $SequenceItem.restartTimeout
             If([System.Convert]::ToBoolean($SequenceItem.continueOnError) -eq $false){
                 Break
             }

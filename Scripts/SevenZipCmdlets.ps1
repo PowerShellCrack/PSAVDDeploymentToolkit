@@ -209,7 +209,7 @@ Function Expand-7zipArchive{
             If($DestinationPath -notmatch '\*$'){$DestinationPath=$DestinationPath + '\*'}
             $ZipArgs += "-o`"$DestinationPath`""
         }
-ExtractHere
+
         $ZipArgsString = $ZipArgs -join ' '
 
         Write-Verbose "$SevenZipPath $ZipArgsString"
@@ -226,7 +226,6 @@ ExtractHere
             Write-Error ("Error occurred while expanding the folder. {0}" -f $result.ExitCode)
         }
 
-ExtractHere
     }
     End{
         $env:SEE_MASK_NOZONECHECKS = 0

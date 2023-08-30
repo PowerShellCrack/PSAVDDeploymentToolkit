@@ -150,39 +150,6 @@ function ConvertFrom-FixedColumnTable {
 }
 
 
-Function New-ItemPath {
-    <#
-    .SYNOPSIS
-        Creates new path
-    .DESCRIPTION
-        Itereated through all nodes in path and builds new registry and file paths
-    .PARAMETER Path
-        The path to create
-    .EXAMPLE
-        New-ItemPath -Path "HKLM:\SOFTWARE\Microsoft\Teams"
-
-        This example looks for each registry key and bullds the path for it
-    .EXAMPLE
-        New-ItemPath -Path "C:\Windows\Temp\Apps\New\Folder"
-
-        This example looks for each folder and bulld the path for it
-    #>
-    [CmdletBinding()]
-    param (
-        [Parameter()]
-        [ValidateNotNullOrEmpty()]
-        [string]$Path
-    )
-
-    Foreach($Node in $Path.split('\'))
-    {
-        $CurrentPos += $Node + '\'
-        Write-Verbose ('Create new path [{0}]' -f $CurrentPos)
-        New-Item $CurrentPos -ErrorAction SilentlyContinue -Force | Out-Null
-    }
-}
-
-
 Function Test-IsDuplicateDirectoryExists{
     [CmdletBinding()]
     param (

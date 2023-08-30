@@ -58,15 +58,18 @@ $ToolkitSettings = Get-Content "$ControlPath\$ControlSettings" | ConvertFrom-Jso
 Install-PackageProvider NuGet -Force
 
 #If(-NOT(Get-PackageProvider -Name Nuget)){Install-PackageProvider -Name Nuget -ForceBootstrap -RequiredVersion '2.8.5.201' -Force | Out-Null}
-#Register-PSRepository -Name Local -SourceLocation "$ToolsPath\Modules" -InstallationPolicy Trusted
+#register local repo
+If(-NOT(Get-PackageProvider -Name AVDToolkit)){
+    Register-PSRepository -Name AVDToolkit -SourceLocation "$ToolsPath\Modules" -InstallationPolicy Trusted
+}
 
-$OfflineModules = Get-ChildItem $ToolsPath -Recurse -Filter *.nupkg
-$ModulesNeeded = @('MSFTLinkDownloader','YetAnotherCMLogger','PSWindowsUpdate')
+$OfflineModules = Get-ChildItem "$ToolsPath\Modules" -Recurse -Filter *.nupkg
+#$ModulesNeeded = @('MSFTLinkDownloader','YetAnotherCMLogger','PSWindowsUpdate')
 #TEST $Module = $ToolkitSettings.Settings.offlineSupportingModules[0]
 #TEST $Module = $ToolkitSettings.Settings.offlineSupportingModules[2]
 $i=0
-Foreach($Module in $ToolkitSettings.Settings.offlineSupportingModules){
-    Write-Host ("`n[{0} of {1}] Processing module [{2}]..." -f $i,$ToolkitSettings.Settings.offlineSupportingModules.count,$Module )
+Foreach($Module in $ToolkitSettings.Settings.SupportingModules){
+    Write-Host ("`n[{0} of {1}] Processing module [{2}]..." -f $i,$ToolkitSettings.Settings.SupportingModules.count,$Module )
     If($OfflineModule = $OfflineModules | Where Name -like "$Module*"){
 
         $Name = $OfflineModule.BaseName.split('.')[0].Trim()
@@ -77,7 +80,7 @@ Foreach($Module in $ToolkitSettings.Settings.offlineSupportingModules){
             Rename-Item $OfflineModule.FullName -NewName ($OfflineModule.BaseName + '.zip') -Force -ErrorAction SilentlyContinue
             New-Item $ModuleDestination -ItemType Directory -ErrorAction SilentlyContinue -Force | Out-Null
             Expand-Archive -Path ($OfflineModule.FullName -replace '\.nupkg$','.zip') -DestinationPath $ModuleDestination -ErrorAction SilentlyContinue
-            Install-Module $Name -Force
+            Install-Module $Name -Force -Scope AllUsers
             Write-Host ("Done") -ForegroundColor Green
         }Catch{
             Write-Host ("Failed. {0}" -f $_.Exception.Message) -ForegroundColor Red
@@ -208,7 +211,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
                                 If($Result.ExitCode -in $SequenceItem.ValidExitCodes){
                                     Write-Host "Install command ran successfully" -ForegroundColor Green
                                 }Else{
-                                    #Write-YaCMLogEntry -Message ("Install command failed for [{0}], error [{1}]" -f $SequenceItem.name,$Result.ExitCode) -Severity 3
+                                    Write-Verbose ("Install command failed for [{0}], error [{1}]" -f $SequenceItem.name,$Result.ExitCode)
                                     Write-Host ('Failed. Exit Code: {0}' -f $Result.ExitCode) -ForegroundColor Red
                                     If([System.Convert]::ToBoolean($SequenceItem.continueOnError) -eq $false){
                                         Break
@@ -271,7 +274,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
                     Try{
                         Invoke-Expression $expandedscript
                     }Catch{
-                        #Write-YaCMLogEntry -Message ("Failed to run command [{0}], error [{1}]" -f $expandedscript,$_.exception.message) -Severity 3
+                        Write-Verbose ("Failed to run command [{0}], error [{1}]" -f $expandedscript,$_.exception.message)
                         Write-Host ('Failed. Error: {0}' -f $_.exception.message) -ForegroundColor Red
                         If([System.Convert]::ToBoolean($SequenceItem.continueOnError) -eq $false){
                             Break
@@ -293,7 +296,8 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
                 }
 
                 Write-Host ("    |---Running step: {0}...")
-                Invoke-PSWindowsUpdate -AllowRestart:$([System.Convert]::ToBoolean($SequenceItem.rebootOnSuccess)) -RestartTimeout $SequenceItem.restartTimeout
+                #Invoke-PSWindowsUpdate -AllowRestart:$([System.Convert]::ToBoolean($SequenceItem.rebootOnSuccess)) -RestartTimeout $SequenceItem.restartTimeout
+                Install-AllWindowsUpdates -AllowRestart:$([System.Convert]::ToBoolean($SequenceItem.rebootOnSuccess)) -RestartTimeout $SequenceItem.restartTimeout
                 If([System.Convert]::ToBoolean($SequenceItem.continueOnError) -eq $false){
                     Break
                 }

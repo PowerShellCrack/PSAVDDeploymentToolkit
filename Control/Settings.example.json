@@ -7,7 +7,8 @@
                 "folderUploadedFilePath": ".\\Control\\toolkitfolders_uploaded.xml",
                 "supportingModules": [
                     "MSFTLinkDownloader",
-                    "YetAnotherCMLogger"
+                    "YetAnotherCMLogger",
+                    "PSWindowsUpdate"
                 ],
                 "recordToLaw": "false"
     },
