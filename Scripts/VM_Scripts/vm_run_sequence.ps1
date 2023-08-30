@@ -70,7 +70,7 @@ $OfflineModules = Get-ChildItem "$ToolsPath\Modules" -Recurse -Filter *.nupkg
 $i=0
 Foreach($Module in $ToolkitSettings.Settings.SupportingModules){
     Write-Host ("`n[{0} of {1}] Processing module [{2}]..." -f $i,$ToolkitSettings.Settings.SupportingModules.count,$Module )
-    If($OfflineModule = $OfflineModules | Where Name -like "$Module*"){
+    If($OfflineModule = $OfflineModules | Where-Object Name -like "$Module*"){
 
         $Name = $OfflineModule.BaseName.split('.')[0].Trim()
         $Version = ($OfflineModule.BaseName -replace '^\w+.').Trim()
@@ -116,7 +116,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
             'Application' {
 
                 #find the application's details associated with id
-                $ApplicationData = $ApplicationsList | Where appId -eq $SequenceItem.id
+                $ApplicationData = $ApplicationsList | Where-Object appId -eq $SequenceItem.id
 
 
                 If($ApplicationData){
@@ -133,7 +133,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
                     New-Item -Path $workingDirectory -ItemType Directory -Force -ErrorAction SilentlyContinue | Out-Null
 
                     #run the pre install section
-                    If($ApplicationData.psobject.properties | Where Name -eq 'preInstallScript' ){
+                    If($ApplicationData.psobject.properties | Where-Object Name -eq 'preInstallScript' ){
                         Write-Host ("    |---Running pre install script...") -NoNewline:$NoNewLine
                         #TEST $scriptline = $ApplicationData.preInstallScript[0]
                         Foreach($scriptline in $ApplicationData.preInstallScript){
@@ -157,7 +157,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
 
                             Try{
                                 #run the pre process section
-                                If($ApplicationData.psobject.properties | Where Name -eq 'installArguments' ){
+                                If($ApplicationData.psobject.properties | Where-Object Name -eq 'installArguments' ){
                                     $InstallArguments = Expand-StringVariables -Object $ApplicationData -Property $ApplicationData.InstallArguments -IncludeVariables
                                     switch([System.IO.Path]::GetExtension($fileName)){
                                         ".msi" {
@@ -223,7 +223,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
                             }
 
                             #run the post process section
-                            If($ApplicationData.psobject.properties | Where Name -eq 'postInstallScript' ){
+                            If($ApplicationData.psobject.properties | Where-Object Name -eq 'postInstallScript' ){
                                 Write-Host ("    |---Running post install script...") -NoNewline:$NoNewLine
                                 Foreach($scriptline in $ApplicationData.postInstallScript){
                                     $expandedscript = Expand-StringVariables -Object $ApplicationData -Property $scriptline -IncludeVariables
@@ -285,7 +285,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
             }#end script switch
 
             'WindowsUpdate' {
-                If($SequenceItem.psobject.properties | Where Name -eq 'preUpdateScript' ){
+                If($SequenceItem.psobject.properties | Where-Object Name -eq 'preUpdateScript' ){
                     Write-Host ("    |---Running pre update script...") -NoNewline:$NoNewLine
                     Foreach($scriptline in $SequenceItem.preUpdateScript){
                         $expandedscript = Expand-StringVariables -Object $ApplicationData -Property $scriptline -IncludeVariables
@@ -302,7 +302,7 @@ Foreach($SequenceItem in $ControlCustomizationData.customSequence ){
                     Break
                 }
 
-                If($SequenceItem.psobject.properties | Where Name -eq 'postUpdateScript' ){
+                If($SequenceItem.psobject.properties | Where-Object Name -eq 'postUpdateScript' ){
                     Write-Host ("    |---Running post update script...") -NoNewline:$NoNewLine
                     Foreach($scriptline in $SequenceItem.postUpdateScript){
                         $expandedscript = Expand-StringVariables -Object $ApplicationData -Property $scriptline -IncludeVariables

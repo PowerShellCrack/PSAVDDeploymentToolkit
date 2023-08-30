@@ -70,7 +70,7 @@ Param(
                 $fakeBoundParameters )
 
 
-        $ControlSettings = Get-Childitem "$PSScriptRoot\Control" -Filter Settings* | Where Extension -eq '.json' | Select -ExpandProperty Name
+        $ControlSettings = Get-Childitem "$PSScriptRoot\Control" -Filter Settings* | Where-Object Extension -eq '.json' | Select-Object -ExpandProperty Name
 
         $ControlSettings | Where-Object {
             $_ -like "$wordToComplete*"
@@ -149,8 +149,7 @@ Set-AzContext -Subscription $ToolkitSettings.TenantEnvironment.subscriptionName
 # Step 2: get existing context
 $currentAzContext = Get-AzContext
 # your subscription, this will get your current subscription
-$subscriptionID=$currentAzContext.Subscription.Id
-
+$subscriptionID = $currentAzContext.Subscription.Id
 Set-Item Env:\SuppressAzurePowerShellBreakingChangeWarnings "true" | Out-Null
 
 #determine where to get sastoken
@@ -170,7 +169,7 @@ If($ToolkitSettings.AzureResources.containerSasToken -eq '[KeyVault]'){
 }
 
 #get storage context
-$StorageKey = (Get-AzStorageAccountKey -ResourceGroupName $ToolkitSettings.AzureResources.storageResourceGroup -Name $ToolkitSettings.AzureResources.storageAccount | Where KeyName -eq 'key1').Value
+$StorageKey = (Get-AzStorageAccountKey -ResourceGroupName $ToolkitSettings.AzureResources.storageResourceGroup -Name $ToolkitSettings.AzureResources.storageAccount | Where-Object KeyName -eq 'key1').Value
 $Ctx = New-AzStorageContext -StorageAccountName $ToolkitSettings.AzureResources.storageAccount -StorageAccountKey $StorageKey
 
 
@@ -193,7 +192,7 @@ $stopwatch = [System.Diagnostics.Stopwatch]::StartNew()
 #import exported apps list from last run (this allows to check if downloaded recent)
 If(Test-Path "$ResourcePath\$($ToolkitSettings.Settings.appDownloadedFilePath)"  ){
     $ArchivedApplicationsList = Import-Clixml "$ResourcePath\$($ToolkitSettings.Settings.appDownloadedFilePath)"
-    $ArchivedApplications = $ArchivedApplicationsList | Where Archived -eq $true
+    $ArchivedApplications = $ArchivedApplicationsList | Where-Object Archived -eq $true
 }Else{
     Write-Host "Unable to process applications, missing {0}. `nPlease run [A2_download_applications.ps1] prior to this step" -ForegroundColor Red
     Break
@@ -266,7 +265,7 @@ If(!$SkipAppUploads){
     #Blob Cleanup
     ## ================================
     Write-Host ("Checking for older versions of applications in blob...") -ForegroundColor Cyan
-    $UnusedAppplications = Get-AzStorageBlob -Container $ToolkitSettings.AzureResources.storageContainer -Context $Ctx | Where {($_.Name -like 'application_*') -and ($_.Name -notin $apps.ArchiveFile)}
+    $UnusedAppplications = Get-AzStorageBlob -Container $ToolkitSettings.AzureResources.storageContainer -Context $Ctx | Where-Object {($_.Name -like 'application_*') -and ($_.Name -notin $apps.ArchiveFile)}
     If($BlobCleanup -and ($UnusedAppplications.count -gt 0) ){
         Write-Host ("    |---cleaning up {0} application(s) in blob..." -f $UnusedAppplications.count) -NoNewline
         try{
@@ -329,7 +328,7 @@ Write-Host ("`nUploading toolkit files...")
 Write-Host ("    |---Uploading control data file...") -NoNewline:$NoNewLine
 try{
     #Get-ChildItem -Path $ControlPath -Filter '*.xml' | Select -ExpandProperty FullName | Invoke-AzCopyToBlob @RestCopyParams
-    $Results = Get-ChildItem -Path $ControlPath -Filter '*.xml' | Select -ExpandProperty FullName | Invoke-AzCopyToBlob @BlobCopyParams -ShowProgress
+    $Results = Get-ChildItem -Path $ControlPath -Filter '*.xml' | Select-Object -ExpandProperty FullName | Invoke-AzCopyToBlob @BlobCopyParams -ShowProgress
     Write-Host ("{0} {1}" -f (Get-Symbol -Symbol GreenCheckmark),($Results -join '')) -ForegroundColor Green
 }Catch{
     Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red
@@ -338,7 +337,7 @@ try{
 Write-Host ("    |---Uploading application data files...") -NoNewline:$NoNewLine
 try{
     #Get-ChildItem -Path $ApplicationsPath -Filter '*.xml' | Select -ExpandProperty FullName | Invoke-AzCopyToBlob @RestCopyParams
-    $Results = Get-ChildItem -Path $ApplicationsPath -Filter '*.xml' | Select -ExpandProperty FullName | Invoke-AzCopyToBlob @BlobCopyParams -ShowProgress
+    $Results = Get-ChildItem -Path $ApplicationsPath -Filter '*.xml' | Select-Object -ExpandProperty FullName | Invoke-AzCopyToBlob @BlobCopyParams -ShowProgress
     Write-Host ("{0} {1}" -f (Get-Symbol -Symbol GreenCheckmark),($Results -join '')) -ForegroundColor Green
 }Catch{
     Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red
@@ -346,7 +345,7 @@ try{
 Write-Host ("    |---Uploading application.json...") -NoNewline:$NoNewLine
 try{
     #Get-ChildItem -Path (Resolve-Path $($ToolkitSettings.Settings.appListFilePath)) | Select -ExpandProperty FullName | Invoke-AzCopyToBlob @RestCopyParams
-    $Results = Get-ChildItem -Path (Resolve-Path $($ToolkitSettings.Settings.appListFilePath)) | Select -ExpandProperty FullName | Invoke-AzCopyToBlob @BlobCopyParams -ShowProgress
+    $Results = Get-ChildItem -Path (Resolve-Path $($ToolkitSettings.Settings.appListFilePath)) | Select-Object -ExpandProperty FullName | Invoke-AzCopyToBlob @BlobCopyParams -ShowProgress
     Write-Host ("{0} {1}" -f (Get-Symbol -Symbol GreenCheckmark),($Results -join '')) -ForegroundColor Green
 }Catch{
     Write-Host ("{0}. {1}" -f (Get-Symbol -Symbol RedX),$_.Exception.message) -ForegroundColor Red

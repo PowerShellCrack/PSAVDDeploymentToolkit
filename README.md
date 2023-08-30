@@ -2,10 +2,9 @@
 
 This toolkit originated from the [PSAIBDeploymentToolkit](https://github.com/PowerShellCrack/PSAIBDeploymentToolkit). I am also developing that, however I needed to develop a way to manage applications in an "offline" manor. This Toolkit does not use AIB instead it uses scripts that build images using the remote Powershell command invoked in a Azure VM. This can support both Azure IL5 and IL6.
 
-The structure is similar to MDT's and each defined "sequenced" process is within the _Control_ folder and each "sequence" contains an **aib.json** file. This file is not a schema that follows the Azure Image builder schema, however with this file in conjunction with a basic template file (within the _Template_ folder), the _Applications\applications.json_ will **build and capture** a reference image for AVD consumption.
+The structure is similar to MDT's and each defined "sequenced" process is within the _Control_ folder and each "sequence" contains a **sequence.json** file. This file is not a schema that follows the Azure Image builder schema, however with this file in conjunction with a basic template file (within the _Template_ folder), the _Applications\applications.json_ will **build and capture** a reference image for AVD consumption.
 
-## NOTES
-I am working to merge this toolkit with my AIB toolkit allowing it to support both methods.
+> NOTE: I am working to merge this toolkit with my AIB toolkit allowing it to support both methods.
 
 ## Prereqs
 
@@ -13,13 +12,13 @@ I am working to merge this toolkit with my AIB toolkit allowing it to support bo
 - Virtual network for reference image
 - The rest can be built using _1_prep_azureenv.ps1_ script
 
-# The Process
+## The Process
 
 To support multiple environment and applications offline, these applications must be downloaded and staged in blob prior to running the image process. This process is not 100% automated at the moment and does require PowerShell scripts to run each **month**.
 
-# Toolkit folders structure
+### Toolkit folders structure
 
-```
+```ascii
 AVDDeploymentToolkit
     |-Applications
         |--fslogix
@@ -30,9 +29,9 @@ AVDDeploymentToolkit
         |--etc...
     |-Control
         |--Win10AvdImage
-            |---aib.json
+            |---sequence.json
         |--Win11AvdImage
-            |---aib.json
+            |---sequence.json
     |-Scripts
         |--supporting scripts
         |--VM
@@ -46,6 +45,7 @@ AVDDeploymentToolkit
     |-Logs
         |--transaction logs for each script ran
 ```
+
 ## Scripts
 
 Filename | Explanation | Access Requirements | Run Example | Recommended Cadence| Notes
@@ -54,23 +54,25 @@ Filename | Explanation | Access Requirements | Run Example | Recommended Cadence
 2_download_applications.ps1|Downloads applications and zips them up| must have internet access|```PS .\2_download_applications.ps1 -ControlSettings setting.gov.json -CompressForUpload```| Monthly |Can be ran on a internet device and files transferred to a tenant connect device from a media
 3_upload_to_azureblob.ps1|Uploads archived applications to blob using sastoken| must have network access to blob storage|```PS .\3_upload_to_azureblob.ps1  -ControlSettings setting.gov.json```| Monthly
 4A_create_avd_ref_vm.ps1|Create Azure VM and runs prep script to install applications| must have tenant access and compute contributor role|```PS .\4A_create_avd_ref_vm.ps1 -ControlSettings setting.gov.json -Sequence Win11AvdGFEImage```| Monthly
-5A_create_vm_image_invokeposh.ps1|Sets up azure environment to support this toolkit and AIB| must have tenant access and compute contributor role|```PS .\5A_create_vm_image_invokeposh.ps1 -ControlSettings setting.gov.test.json -ForceNewSasToken -Sequence Win11AvdGFEImage -VMName TEST-2306-REF -CleanUpVMOnCaptureSuccess```| Monthly |
+5A_capture_vm_image_invokeposh.ps1|Sets up azure environment to support this toolkit and AIB| must have tenant access and compute contributor role|```PS .\5A_capture_vm_image_invokeposh.ps1 -ControlSettings setting.gov.test.json -ForceNewSasToken -Sequence Win11AvdGFEImage -VMName TEST-2306-REF -CleanUpVMOnCaptureSuccess```| Monthly |
 
-> Each of these scripts have a dependency on at least on json file included in toolkit.
+>TIP: Each of these script has a dependency on at least one json file included in the toolkit.
 
-# How to get started
+## How to get started
+
 1. Download repo
 1. Edit the applications.json (or leave it be). See _application.json breakdown_ below
 1. Copy TemplateImage folders in Control folder and name it to your image needs (or edit the existing ones)
-1. Edit the aib.json for the applications,scripts you want to install
-    - See _aib.json breakdown_ below
+1. Edit the sequence.json for the applications,scripts you want to install
+    - See _sequence.json breakdown_ below
     - Edit all entries with arrows '\<\>' and choose an option with the pipe '\|'
 1. Copy the settings.example.json and make new file.
     - Edit all entries with arrows '\<\>' and choose an option with the pipe '\|'
-1. Run each A scripts in order using the params (like in the examples)
+1. Run each script in order using the params (like in the examples)
 
+### the workflow
 
-## the workflow
+>NOTE: Images may not reflect script names
 
 ![step1](/.images/a1_prep_azureenv.jpg)
 
@@ -82,11 +84,12 @@ Filename | Explanation | Access Requirements | Run Example | Recommended Cadence
 
 ![step5](/.images/a5_create_vm_image.jpg)
 
-# **application.json** breakdown
+## **application.json** breakdown
 
-This is an array of listed applications and the method for downloading them
+This is file contains a list applications and the method for downloading them and installing them
 
 Supported parameters are:
+
 - **enabled** – boolean. enables or disables this step entirely
 - **download** – boolean. enables or disables the download step
 - **appId** – guid. Use _New-Guid_ to get a guid,
@@ -102,8 +105,8 @@ Supported parameters are:
 - **preInstallScript** – string or array of strings. This is sequential. Each line will run in powershell before install starts. Typically used to setup dependencies.
 - **postInstallScript** – string or array of strings. This is sequential. Each line will run in powershell after application is installed. Typically used to configure post settings for applications
 
-
 ### Example 1
+
 ```json
  [
     {
@@ -167,17 +170,19 @@ Supported parameters are:
             "$version = (Get-ChildItem -Path \"[localPath]\" -Recurse -Directory | Where BaseName -match \"\\d+(\\.\\d+){1,3}\").BaseName",
             "Pop-Location"
         ],
-        "installArguments": "\"[outputPath]\" /configure \"[localPath]\\configuration.xml\""
+        "installArguments": "/configure \"[localPath]\\configuration.xml\""
     },
 ]
 ```
 
-# **settings-<org>.json** breakdown
+## **settings-\<org>.json** breakdown
+
+This file should be located under the _Control_ folder.
 
 - **Settings** – Specify paths and modules needed for toolkit to work
 - **TenantEnvironment** – Used for tenant connection with Azure modules
 - **AzureResources** – Resources need to manage the image build process. Some key ones to focus on
-    - **storageAccount** – used during the application upload and download steps. Specify the storage account used
+  - **storageAccount** – used during the application upload and download steps. Specify the storage account used
     - **storageContainer** – used during the application upload and download steps. Specify the container used
     - **containerSasToken** – used during the application upload and download steps. Can be autogenerated using script _A1_prep_azureenv.ps1_. Can use stored in keyvault
     - **keyVault** – Specify the keyvault to use or create
@@ -186,7 +191,9 @@ Supported parameters are:
 - **ManagedIdentity** – specified to appropiate assign roles to AIB
 - **LogAnalytics** – Not used at the moment. Intended for sending build status to log analytics for viewing
 
-# **aib.json** breakdown
+### sequence.json file breakdown
+
+This file should exist in each type of _sequence_ folder under _Control_. It determines what actions are done on the VM.
 
 - **customSettings** – section is where the global settings will be.
 - **customSequence** – section is used to specify each step the script will run through. Once the customSequence is complete the cleanup action and final action (from customSettings section) are ran
@@ -198,10 +205,11 @@ There are three types of steps that can be ran during the customSequence: **Appl
 ## Type: **Applications**
 
 Supported parameters are:
+
 - **enabled** – boolean. enables or disables the step in the csutomizations
 - **type** – string. Set to "Application"
 - **name** – string. Name of step
-- **id** – guid. Must match that of the application.json corresponding list,
+- **id** – guid. **Must match** that of the _application.json_ corresponding list,
 - **workingDirectory** – string. Path of where application will installed from
 - **validExitCodes** – array of integers. typically set to [0,3010]
 - **continueOnError** – boolean. enables allows script to run even if do does not match the validExitCode
@@ -209,6 +217,7 @@ Supported parameters are:
 - **rebootOnSuccess** – boolean. Reboots the system after install. this will break the script from continuing. DON'T USE YET
 
 ### Example 1
+
 ```json
 "customSequence":  [
         {
@@ -225,10 +234,10 @@ Supported parameters are:
     ]
 ```
 
-
 ## Type: **Scripts**
 
 Supported parameters are:
+
 - **enabled** – boolean. enables or disables the step in the customizations
 - **type** – string. Set to "Script"
 - **name** – string. Name of step
@@ -272,6 +281,7 @@ Supported parameters are:
 ## Type: **WindowsUpdate**
 
 Supported parameters are:
+
 - **enabled** – boolean. enables or disables the step in the customizations
 - **type** – string. Set to "WindowsUpdate"
 - **name** – string. Name of step
@@ -298,11 +308,11 @@ Supported parameters are:
   ],
 ```
 
-# Dynamic variable support
+## Dynamic variable support
 
 As each json object is processed, the scripts are looking for bracketed values to convert to variables. This allows to the script to be more dynamic.
 
-### Example 1.
+### Example 1
 
 If the script already has a variable _$localpath = "c:\windows\temp\apps"_ the script will look for any property using _\[localPath\]_ and replace it with _"c:\windows\temp\apps"_.
 
@@ -316,6 +326,7 @@ Since the json has _key:value_ properties in it such as: ```"filename":"setup.ex
 - Container must be anonymous access with SASTokens
 
 ## TODOs
+
 - Build process to use Azure Key vault with rotating storage keys
 - Use Azure Automation with Managed Identities
 - Develop a MDT-like User Interface to allow easier configurations or use MDT then convert for AIB to consume
@@ -333,12 +344,11 @@ If you are contributing, testing or using the code. Please create a copy of the 
 
 There is a _Logs_ folder that will contain a dated transcript of the AIB sequence called and the json arm template is generated there for reference.
 
-# Known Issues
+## Known Issues
 
-- Uploading large files (like M365, Visio, Project, etc) to blob may timeout. I developed a 7zip wrapper script to break the compress file into parts. Everything will upload just fine, but the download doesn't work with split files yet. Don't enable m365 apps yet; use m365 azure marketplace image
--
+- Please submit issues for me to track
 
-# References
+## References
 
 - https://github.com/danielsollondon/azvmimagebuilder/tree/master/quickquickstarts/0_Creating_a_Custom_Windows_Managed_Image
 - https://docs.microsoft.com/en-us/azure/virtual-machines/linux/image-builder-json?tabs=azure-powershell
@@ -346,10 +356,11 @@ There is a _Logs_ folder that will contain a dated transcript of the AIB sequenc
 - https://docs.microsoft.com/en-us/azure/virtual-desktop/set-up-golden-image
 - https://docs.microsoft.com/en-us/azure/virtual-machines/windows/image-builder-powershell
 
-# DISCLAIMER
+## DISCLAIMER
+
 > Even though I have tested this to the extend that I could, I want to ensure your aware of Microsoft’s position on developing custom scripts.
 
 This Sample Code is provided for the purpose of illustration only and is not intended to be used in a production environment.  THIS SAMPLE CODE AND ANY RELATED INFORMATION ARE PROVIDED "AS IS" WITHOUT WARRANTY OF ANY KIND, EITHER EXPRESSED OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE IMPLIED WARRANTIES OF MERCHANTABILITY AND/OR FITNESS FOR A PARTICULAR PURPOSE.  We grant You a nonexclusive, royalty-free right to use and modify the Sample Code and to reproduce and distribute the object code form of the Sample Code, provided that You agree: (i) to not use Our name, logo, or trademarks to market Your software product in which the Sample Code is embedded; (ii) to include a valid copyright notice on Your software product in which the Sample Code is embedded; and (iii) to indemnify, hold harmless, and defend Us and Our suppliers from and against any claims or lawsuits, including attorneys’ fees, that arise or result from the use or distribution of the Sample Code.
 
 This posting is provided "AS IS" with no warranties, and confers no rights. Use of included script samples are subject to the terms specified
-at https://www.microsoft.com/en-us/legal/copyright.
+at <https://www.microsoft.com/en-us/legal/copyright>.

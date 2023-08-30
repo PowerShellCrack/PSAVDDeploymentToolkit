@@ -200,9 +200,9 @@ Function Get-AllWindowsUpdates {
     #$update = $updates | Select -Last 1
     foreach($update in $objSession.CreateUpdateSearcher().Search($SearchCriteria).Updates)
     {
-        $CategoryList = $Update.Categories | ?{ $_.Parent.CategoryID -ne "6964aab4-c5b5-43bd-a17d-ffb4346a8e1d" } | %{ $_.Name }
+        $CategoryList = $Update.Categories | Where-Object{ $_.Parent.CategoryID -ne "6964aab4-c5b5-43bd-a17d-ffb4346a8e1d" } | ForEach-Object{ $_.Name }
 
-        If( $null -ne(Compare-Object $CategoryList -DifferenceObject $Categories -IncludeEqual | Where SideIndicator -eq '==') ){
+        If( $null -ne(Compare-Object $CategoryList -DifferenceObject $Categories -IncludeEqual | Where-Object SideIndicator -eq '==') ){
 
             If($Passthru){
                 $update
@@ -211,8 +211,8 @@ Function Get-AllWindowsUpdates {
 
                 [pscustomobject] @{
                     ID = $update.Identity.UpdateID
-                    KB = $update.KBARticleIDs| %{ $_ }
-                    URL = $update.MoreInfoUrls| %{ $_ }
+                    KB = $update.KBARticleIDs| ForEach-Object{ $_ }
+                    URL = $update.MoreInfoUrls| ForEach-Object{ $_ }
                     PublishedDate = $update.LastDeploymentChangeTime.ToString('yyyy-MM-dd')
                     Type = $CategoryList
                     Title = $update.Title
@@ -476,7 +476,7 @@ Function Invoke-PSWindowsUpdate{
 
     $WUHistory = Get-WUHistory -MaxDate (Get-Date -Format 'MM/dd/yyyy')
 
-    $WUHistory | Select @{n="Message";e={("INSTALLED " + $ProductName.ToUpper() + ": " + $_.Title)}} | Select -ExpandProperty Message | Write-Host
+    $WUHistory | Select-Object @{n="Message";e={("INSTALLED " + $ProductName.ToUpper() + ": " + $_.Title)}} | Select-Object -ExpandProperty Message | Write-Host
     Write-Verbose ("COMPLETED {0}: Pending reboot is: {1}" -f $ProductName.ToUpper(),(Get-WURebootStatus -Silent))
 
     # Disable Automatic Updates...
